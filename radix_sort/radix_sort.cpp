@@ -7,7 +7,7 @@
 #include <stdint.h>
 
 size_t getRadix(int val, int num) {
-	return (val >> (num << 2 << 1)) & 0xFF;
+	return (val >> (8 * num)) & 0xFF;
 }
 
 size_t getBitPos(uint32_t n) {
@@ -36,8 +36,8 @@ void radixSort(std::vector<uint32_t>& array) {
     const size_t COUNTS_SIZE = 0x101;
     const size_t ARRAY_SIZE = array.size();
 
-    const size_t SMALLSET_POW2 = 1 << getBitPos(ARRAY_SIZE);
-    const size_t REST_SIZE = ARRAY_SIZE - SMALLSET_POW2;
+    const size_t LARGEST_ALIQUOT4 = ARRAY_SIZE & ~3;
+    const size_t REST_SIZE = ARRAY_SIZE - LARGEST_ALIQUOT4;
 
     uint32_t tmpArray[ARRAY_SIZE];
     memset(tmpArray, 0, ARRAY_SIZE * sizeof(uint32_t));
@@ -45,22 +45,20 @@ void radixSort(std::vector<uint32_t>& array) {
     uint32_t* sorted = &array.front();
     uint32_t* buffer = tmpArray;
 
-    uint32_t counts1[COUNTS_SIZE];
-    uint32_t counts2[COUNTS_SIZE];
-    memset(counts1, 0, COUNTS_SIZE * sizeof(uint32_t));
-    memset(counts2, 0, COUNTS_SIZE * sizeof(uint32_t));
+    uint32_t counts[COUNTS_SIZE * RADIX];
+    memset(counts, 0, sizeof(uint32_t) * COUNTS_SIZE * RADIX);
 
-    uint32_t* currentCounts = counts1;
-    uint32_t* prevCounts = counts2;
+    uint32_t* currentCounts = counts;
+    uint32_t* nextCounts = counts + COUNTS_SIZE;
 
-    for (size_t i = 0; i < SMALLSET_POW2;) {
+    for (size_t i = 0; i < LARGEST_ALIQUOT4;) {
         ++(currentCounts[getRadix(sorted[i++], 0) + 1]);
         ++(currentCounts[getRadix(sorted[i++], 0) + 1]);
         ++(currentCounts[getRadix(sorted[i++], 0) + 1]);
         ++(currentCounts[getRadix(sorted[i++], 0) + 1]);
     }
 
-    for (size_t i = SMALLSET_POW2; i < ARRAY_SIZE; ++i) {
+    for (size_t i = LARGEST_ALIQUOT4; i < ARRAY_SIZE; ++i) {
         ++(currentCounts[getRadix(sorted[i], 0) + 1]);
     }
 
@@ -71,61 +69,76 @@ void radixSort(std::vector<uint32_t>& array) {
         currentCounts[i++] += currentCounts[i - 1];
     }
 
+    size_t tmpArrayIndex = 0;
+    size_t countsIndex = 0;
+    uint32_t* value = 0;
     for (uint8_t r = 0; r < RADIX - 1; ++r) {
-        for (size_t i = 0; i < SMALLSET_POW2;) {
-            size_t tmpArrayIndex = (currentCounts[getRadix(sorted[i], r)])++;
-            buffer[tmpArrayIndex] = sorted[i];
-            ++(prevCounts[getRadix(buffer[tmpArrayIndex], r + 1) + 1]);
+        const uint32_t * const firstLast = sorted + LARGEST_ALIQUOT4;
+        value = sorted;
+        for (; value < firstLast; ) {
+            tmpArrayIndex = (currentCounts[getRadix(*value, r)])++;
+            buffer[tmpArrayIndex] = *value;
+            countsIndex = getRadix(buffer[tmpArrayIndex], r + 1) + 1;
+            ++(nextCounts[countsIndex]);
 
-            ++i;
+            ++value;
 
-            tmpArrayIndex = (currentCounts[getRadix(sorted[i], r)])++;
-            buffer[tmpArrayIndex] = sorted[i];
-            ++(prevCounts[getRadix(buffer[tmpArrayIndex], r + 1) + 1]);
+            tmpArrayIndex = (currentCounts[getRadix(*value, r)])++;
+            buffer[tmpArrayIndex] = *value;
+            countsIndex = getRadix(buffer[tmpArrayIndex], r + 1) + 1;
+            ++(nextCounts[countsIndex]);
 
-            ++i;
+            ++value;
 
-            tmpArrayIndex = (currentCounts[getRadix(sorted[i], r)])++;
-            buffer[tmpArrayIndex] = sorted[i];
-            ++(prevCounts[getRadix(buffer[tmpArrayIndex], r + 1) + 1]);
+            tmpArrayIndex = (currentCounts[getRadix(*value, r)])++;
+            buffer[tmpArrayIndex] = *value;
+            countsIndex = getRadix(buffer[tmpArrayIndex], r + 1) + 1;
+            ++(nextCounts[countsIndex]);
 
-            ++i;
+            ++value;
 
-            tmpArrayIndex = (currentCounts[getRadix(sorted[i], r)])++;
-            buffer[tmpArrayIndex] = sorted[i];
-            ++(prevCounts[getRadix(buffer[tmpArrayIndex], r + 1) + 1]);
+            tmpArrayIndex = (currentCounts[getRadix(*value, r)])++;
+            buffer[tmpArrayIndex] = *value;
+            countsIndex = getRadix(buffer[tmpArrayIndex], r + 1) + 1;
+            ++(nextCounts[countsIndex]);
 
-            ++i;
+            ++value;
         }
 
-        for (size_t i = SMALLSET_POW2; i < ARRAY_SIZE; ++i) {
-            size_t tmpArrayIndex = (currentCounts[getRadix(sorted[i], r)])++;
-            buffer[tmpArrayIndex] = sorted[i];
+        const uint32_t * const secondLast = sorted + ARRAY_SIZE;
+        for (; value < secondLast; ) {
+            tmpArrayIndex = (currentCounts[getRadix(*value, r)])++;
+            buffer[tmpArrayIndex] = *value;
 
-            ++(prevCounts[getRadix(buffer[tmpArrayIndex], r + 1) + 1]);
+            ++(nextCounts[getRadix(buffer[tmpArrayIndex], r + 1) + 1]);
+
+            ++value;
         }
 
         for (size_t i = 1; i < COUNTS_SIZE;) {
-            prevCounts[i++] += prevCounts[i - 1];
-            prevCounts[i++] += prevCounts[i - 1];
-            prevCounts[i++] += prevCounts[i - 1];
-            prevCounts[i++] += prevCounts[i - 1];
+            nextCounts[i++] += nextCounts[i - 1];
+            nextCounts[i++] += nextCounts[i - 1];
+            nextCounts[i++] += nextCounts[i - 1];
+            nextCounts[i++] += nextCounts[i - 1];
         }
 
-        memset(currentCounts, 0, COUNTS_SIZE * sizeof(uint32_t));
-
-        std::swap(currentCounts, prevCounts);
+        currentCounts += COUNTS_SIZE;
+        nextCounts += COUNTS_SIZE;
         std::swap(sorted, buffer);
     }
 
-    for (size_t i = 0; i < SMALLSET_POW2;) {
+    /*for (size_t i = 0; i < LARGEST_ALIQUOT4;) {
         buffer[(currentCounts[getRadix(sorted[i++], RADIX - 1)])++] = sorted[i - 1];
         buffer[(currentCounts[getRadix(sorted[i++], RADIX - 1)])++] = sorted[i - 1];
         buffer[(currentCounts[getRadix(sorted[i++], RADIX - 1)])++] = sorted[i - 1];
         buffer[(currentCounts[getRadix(sorted[i++], RADIX - 1)])++] = sorted[i - 1];
     }
 
-    for (size_t i = SMALLSET_POW2; i < ARRAY_SIZE; ++i) {
+    for (size_t i = LARGEST_ALIQUOT4; i < ARRAY_SIZE; ++i) {
+        buffer[(currentCounts[getRadix(sorted[i], RADIX - 1)])++] = sorted[i];
+    }*/
+
+    for (size_t i = 0; i < ARRAY_SIZE; ++i) {
         buffer[(currentCounts[getRadix(sorted[i], RADIX - 1)])++] = sorted[i];
     }
 }
@@ -180,9 +193,12 @@ std::pair<float, float> evaluate(size_t size) {
 }
 
 int main(int argc, char* argv[]) {
-    for (size_t i = 30; i <= 60; i += 1) {
+    for (size_t i = 30; i <= 100; ++i) {
         std::pair<float, float> result = evaluate(i);
         std::cout << i << " " << result.first << " " << result.second << "\n";
+        if (result.first < result.second) {
+            break;
+        }
     }
 
     return 0;
