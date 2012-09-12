@@ -1,10 +1,10 @@
-#include <iostream>
-#include <vector>
 #include <algorithm>
 #include <cassert>
 #include <cstring>
-#include <sys/time.h>
+#include <iostream>
 #include <stdint.h>
+#include <sys/time.h>
+#include <vector>
 
 size_t getRadix(int val, int num) {
 	return (val >> (8 * num)) & 0xFF;
@@ -35,11 +35,22 @@ void radixSort(std::vector<uint32_t>& array) {
     const size_t RADIX = 4;
     const size_t COUNTS_SIZE = 0x101;
     const size_t ARRAY_SIZE = array.size();
+    const size_t MAX_STACK_ARRAY_SIZE = 0xFF;
 
     const size_t LARGEST_ALIQUOT4 = ARRAY_SIZE & ~3;
     const size_t REST_SIZE = ARRAY_SIZE - LARGEST_ALIQUOT4;
 
-    uint32_t tmpArray[ARRAY_SIZE];
+    uint32_t stackTmpArray[MAX_STACK_ARRAY_SIZE];
+    bool useArrayInHeap = false;
+
+    uint32_t* tmpArray = 0;
+    if (ARRAY_SIZE <= MAX_STACK_ARRAY_SIZE) {
+        tmpArray = stackTmpArray;
+    } else {
+        tmpArray = new uint32_t[ARRAY_SIZE];
+        useArrayInHeap = true;
+    }
+
     memset(tmpArray, 0, ARRAY_SIZE * sizeof(uint32_t));
 
     uint32_t* sorted = &array.front();
@@ -127,19 +138,12 @@ void radixSort(std::vector<uint32_t>& array) {
         std::swap(sorted, buffer);
     }
 
-    /*for (size_t i = 0; i < LARGEST_ALIQUOT4;) {
-        buffer[(currentCounts[getRadix(sorted[i++], RADIX - 1)])++] = sorted[i - 1];
-        buffer[(currentCounts[getRadix(sorted[i++], RADIX - 1)])++] = sorted[i - 1];
-        buffer[(currentCounts[getRadix(sorted[i++], RADIX - 1)])++] = sorted[i - 1];
-        buffer[(currentCounts[getRadix(sorted[i++], RADIX - 1)])++] = sorted[i - 1];
-    }
-
-    for (size_t i = LARGEST_ALIQUOT4; i < ARRAY_SIZE; ++i) {
-        buffer[(currentCounts[getRadix(sorted[i], RADIX - 1)])++] = sorted[i];
-    }*/
-
     for (size_t i = 0; i < ARRAY_SIZE; ++i) {
         buffer[(currentCounts[getRadix(sorted[i], RADIX - 1)])++] = sorted[i];
+    }
+
+    if (useArrayInHeap) {
+        delete [] tmpArray;
     }
 }
 
@@ -193,7 +197,7 @@ std::pair<float, float> evaluate(size_t size) {
 }
 
 int main(int argc, char* argv[]) {
-    for (size_t i = 30; i <= 100; ++i) {
+    for (size_t i = 2; i <= 100; ++i) {
         std::pair<float, float> result = evaluate(i);
         std::cout << i << " " << result.first << " " << result.second << "\n";
         if (result.first < result.second) {
