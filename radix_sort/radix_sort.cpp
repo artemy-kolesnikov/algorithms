@@ -31,7 +31,10 @@ size_t getRandValue() {
     return result;
 }
 
-void radixSort(std::vector<uint32_t>& array) {
+template <typename Collection>
+void radixSort(Collection& array) {
+    typedef typename Collection::value_type ValueType;
+
     const size_t RADIX = 4;
     const size_t COUNTS_SIZE = 0x101;
     const size_t ARRAY_SIZE = array.size();
@@ -40,21 +43,19 @@ void radixSort(std::vector<uint32_t>& array) {
     const size_t LARGEST_ALIQUOT4 = ARRAY_SIZE & ~3;
     const size_t REST_SIZE = ARRAY_SIZE - LARGEST_ALIQUOT4;
 
-    uint32_t stackTmpArray[MAX_STACK_ARRAY_SIZE];
+    ValueType stackTmpArray[MAX_STACK_ARRAY_SIZE];
     bool useArrayInHeap = false;
 
-    uint32_t* tmpArray = 0;
+    ValueType* tmpArray = 0;
     if (ARRAY_SIZE <= MAX_STACK_ARRAY_SIZE) {
         tmpArray = stackTmpArray;
     } else {
-        tmpArray = new uint32_t[ARRAY_SIZE];
+        tmpArray = new ValueType[ARRAY_SIZE];
         useArrayInHeap = true;
     }
 
-    memset(tmpArray, 0, ARRAY_SIZE * sizeof(uint32_t));
-
-    uint32_t* sorted = &array.front();
-    uint32_t* buffer = tmpArray;
+    ValueType* sorted = &array.front();
+    ValueType* buffer = tmpArray;
 
     uint32_t counts[COUNTS_SIZE * RADIX];
     memset(counts, 0, sizeof(uint32_t) * COUNTS_SIZE * RADIX);
@@ -82,9 +83,9 @@ void radixSort(std::vector<uint32_t>& array) {
 
     size_t tmpArrayIndex = 0;
     size_t countsIndex = 0;
-    uint32_t* value = 0;
+    ValueType* value = 0;
     for (uint8_t r = 0; r < RADIX - 1; ++r) {
-        const uint32_t * const firstLast = sorted + LARGEST_ALIQUOT4;
+        const ValueType * const firstLast = sorted + LARGEST_ALIQUOT4;
         value = sorted;
         for (; value < firstLast; ) {
             tmpArrayIndex = (currentCounts[getRadix(*value, r)])++;
@@ -116,7 +117,7 @@ void radixSort(std::vector<uint32_t>& array) {
             ++value;
         }
 
-        const uint32_t * const secondLast = sorted + ARRAY_SIZE;
+        const ValueType * const secondLast = sorted + ARRAY_SIZE;
         for (; value < secondLast; ) {
             tmpArrayIndex = (currentCounts[getRadix(*value, r)])++;
             buffer[tmpArrayIndex] = *value;
@@ -156,12 +157,14 @@ std::pair<float, float> evaluate(size_t size) {
 
     struct timeval start, end;
 
+    typedef unsigned long ValueType;
+
     const size_t SIZE = size;
     for (size_t i = 0; i < 10000; ++i) {
-        std::vector<uint32_t> vec1(SIZE);
-        std::vector<uint32_t> vec2(SIZE);
+        std::vector<ValueType> vec1(SIZE);
+        std::vector<ValueType> vec2(SIZE);
         for (size_t i = 0; i < SIZE; ++i) {
-            int value = getRandValue();
+            ValueType value = getRandValue();
             vec1[i] = value;
             vec2[i] = value;
         }
