@@ -1,23 +1,14 @@
 #include <algorithm>
 #include <cassert>
+#include <cmath>
+#include <cstdint>
 #include <cstring>
 #include <iostream>
-#include <stdint.h>
 #include <sys/time.h>
 #include <vector>
 
 size_t getRadix(int val, int num) {
 	return (val >> (8 * num)) & 0xFF;
-}
-
-size_t getBitPos(uint32_t n) {
-   size_t pos = 0;
-   if(n & 0xFFFF0000) pos = 16, n >>= 16;
-   if(n & 0x0000FF00) pos += 8, n >>= 8;
-   if(n & 0x000000F0) pos += 4, n >>= 4;
-   if(n & 0x0000000C) pos += 2, n >>= 2;
-   if(n & 0x00000002) pos += 1;
-   return pos;
 }
 
 size_t getRandValue() {
@@ -44,14 +35,15 @@ void radixSort(Collection& array) {
     const size_t REST_SIZE = ARRAY_SIZE - LARGEST_ALIQUOT4;
 
     ValueType stackTmpArray[MAX_STACK_ARRAY_SIZE];
-    bool useArrayInHeap = false;
+
+    std::vector<ValueType> tmpVector;
 
     ValueType* tmpArray = 0;
     if (ARRAY_SIZE <= MAX_STACK_ARRAY_SIZE) {
         tmpArray = stackTmpArray;
     } else {
-        tmpArray = new ValueType[ARRAY_SIZE];
-        useArrayInHeap = true;
+        tmpVector.resize(ARRAY_SIZE);
+        tmpArray = &tmpVector[0];
     }
 
     ValueType* sorted = &array.front();
@@ -142,10 +134,6 @@ void radixSort(Collection& array) {
     for (size_t i = 0; i < ARRAY_SIZE; ++i) {
         buffer[(currentCounts[getRadix(sorted[i], RADIX - 1)])++] = sorted[i];
     }
-
-    if (useArrayInHeap) {
-        delete [] tmpArray;
-    }
 }
 
 std::pair<float, float> evaluate(size_t size) {
@@ -177,7 +165,7 @@ std::pair<float, float> evaluate(size_t size) {
         int useconds = end.tv_usec - start.tv_usec;
 
         predRadixTime = radixTime;
-        radixTime += ((seconds) * 1000 + useconds/1000.0);
+        radixTime += ((seconds) * pow(10, 6) + useconds);
 
         assert(predRadixTime <= radixTime);
 
@@ -189,7 +177,7 @@ std::pair<float, float> evaluate(size_t size) {
         useconds = end.tv_usec - start.tv_usec;
 
         predQsortTime = qsortTime;
-        qsortTime += ((seconds) * 1000 + useconds/1000.0);
+        qsortTime += (seconds * pow(10, 6) + useconds);
 
         assert(predQsortTime <= qsortTime);
 
