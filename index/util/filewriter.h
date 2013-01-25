@@ -5,12 +5,13 @@
 #include <fstream>
 
 #include <boost/shared_ptr.hpp>
+#include <boost/utility.hpp>
 
 #include <archive.h>
 #include <exception.h>
 
 template <typename Entry>
-class FileWriter {
+class FileWriter : boost::noncopyable {
 public:
     typedef Entry EntryType;
 
@@ -39,10 +40,6 @@ public:
         out.write(&outArchive.getBuffer().front(), offset);
         writtenCount = 0;
     }
-
-private:
-    FileWriter(const FileWriter& other);
-    FileWriter& operator = (const FileWriter& other);
 
 private:
     std::ofstream out;

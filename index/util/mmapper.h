@@ -7,7 +7,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-class ReadOnlyMemMapper {
+#include <boost/utility.hpp>
+
+class ReadOnlyMemMapper : boost::noncopyable {
 public:
     ReadOnlyMemMapper(const std::string& fName) :
         fileName(fName),
@@ -63,10 +65,6 @@ public:
             endPtr = 0;
         }
     }
-
-private:
-    ReadOnlyMemMapper(const ReadOnlyMemMapper&);
-    ReadOnlyMemMapper& operator = (const ReadOnlyMemMapper&);
 
 private:
     std::string fileName;

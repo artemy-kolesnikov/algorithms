@@ -1,15 +1,16 @@
 #pragma once
 
-#include <string>
 #include <list>
 #include <sstream>
+#include <string>
 
 #include <boost/shared_ptr.hpp>
+#include <boost/utility.hpp>
 
 #include <filewriter.h>
 
 template <typename EntryType>
-class Chunker {
+class Chunker : boost::noncopyable {
 public:
     Chunker(const std::string& chnkDir, size_t countInChnk) :
             chunkDir(chnkDir),
@@ -44,9 +45,6 @@ public:
     }
 
 private:
-    Chunker(const Chunker&);
-    Chunker& operator = (const Chunker& other);
-
     std::string getChunkFileName() const {
         std::stringstream sstr;
         sstr << chunkDir << "/chunk_" << chunkCounter << ".dat";

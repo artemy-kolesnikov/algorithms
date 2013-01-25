@@ -5,12 +5,13 @@
 #include <vector>
 
 #include <boost/shared_ptr.hpp>
+#include <boost/utility.hpp>
 
 #include <archive.h>
 #include <exception.h>
 
 template <typename Entry>
-class FileReader {
+class FileReader : boost::noncopyable {
 public:
     typedef Entry EntryType;
 
@@ -47,10 +48,6 @@ public:
 
         return &lastRead;
     }
-
-private:
-    FileReader(const FileReader& other);
-    FileReader& operator = (const FileReader& other);
 
 private:
     std::ifstream in;
