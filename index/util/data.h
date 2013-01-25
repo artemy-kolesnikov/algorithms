@@ -9,7 +9,7 @@
 
 #include <archive.h>
 
-class Key : private std::vector<unsigned char> {
+class Key : std::vector<unsigned char> {
 public:
     enum {
         SIZE = 64,

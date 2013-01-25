@@ -6,12 +6,12 @@
 
 namespace _Impl {
 
-template <typename WriterType, typename ItemType>
-struct WriteOperation : public std::unary_function<ItemType, void> {
+template <typename WriterType>
+struct WriteOperation : public std::unary_function<typename WriterType::EntryType, void> {
     explicit WriteOperation(WriterType* writer_) :
             writer(writer_) {}
 
-    void operator()(ItemType item) {
+    void operator()(const typename WriterType::EntryType& item) {
         writer->write(item);
     }
 
@@ -21,11 +21,10 @@ struct WriteOperation : public std::unary_function<ItemType, void> {
 }
 
 template <typename ReaderType, typename WriterType>
-void sortFileInMemory(const std::string& fileName) {
+void sortFileInMemory(ReaderType& reader, WriterType& writer) {
     typedef typename ReaderType::EntryType EntryType;
 
     std::vector<EntryType> dataVector;
-    ReaderType reader(fileName, 1024);
 
     EntryType entry;
     while (reader.read(entry)) {
@@ -36,7 +35,6 @@ void sortFileInMemory(const std::string& fileName) {
 
     std::sort(dataVector.begin(), dataVector.end());
 
-    WriterType writer(fileName, 1024);
-    _Impl::WriteOperation<WriterType, EntryType> writeOp(&writer);
+    _Impl::WriteOperation<WriterType> writeOp(&writer);
     std::for_each(dataVector.begin(), dataVector.end(), writeOp);
 }

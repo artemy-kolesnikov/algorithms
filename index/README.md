@@ -3,7 +3,7 @@ Index
 
 #Functionality
 
-Create index of data file using external memory algorithms
+Create index of data file using external memory algorithms.
 Data file has to have this format:
 
 ```cpp

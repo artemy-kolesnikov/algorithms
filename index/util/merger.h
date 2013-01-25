@@ -25,7 +25,7 @@ class Merger {
     typedef std::priority_queue<ItemHolder> PriorityQueueType;
 
 public:
-    Merger(const std::list<ReaderType>& readers_, WriterType writer_) :
+    Merger(const std::list<ReaderType>& readers_, const WriterType& writer_) :
             readers(readers_),
             writer(writer_) {}
 

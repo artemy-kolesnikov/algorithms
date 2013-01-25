@@ -1,6 +1,8 @@
 #include <cmath>
 #include <sys/time.h>
 #include <vector>
+#include <iostream>
+#include <cassert>
 
 #include <iteratorreader.h>
 #include <iteratorwriter.h>

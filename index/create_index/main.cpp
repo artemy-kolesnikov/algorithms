@@ -34,9 +34,7 @@ typedef Merger<IndexEntry, CopyableIndexFileReader, CopyableIndexFileWriter> Ind
 
 typedef Chunker<IndexEntry> IndexChunker;
 
-void createChunks(const char* dataFileName, const char* chunkDir, std::list<std::string>& chunkFiles) {
-    const size_t INDEX_CHUNK_COUNT = (1 << 20);
-
+void createChunks(const char* dataFileName, const char* chunkDir, std::list<std::string>& chunkFiles, size_t itemsInChunk) {
     std::vector<char> dataHeaderBuffer(DataHeader::bytesUsed(), 0);
     InArchive inArchive(&dataHeaderBuffer.front(), &dataHeaderBuffer.front() + dataHeaderBuffer.size());
 
@@ -44,7 +42,7 @@ void createChunks(const char* dataFileName, const char* chunkDir, std::list<std:
 
     size_t count = 0;
 
-    IndexChunker chunker(chunkDir, INDEX_CHUNK_COUNT);
+    IndexChunker chunker(chunkDir, itemsInChunk);
 
     ReadOnlyMemMapper mmapper(dataFileName);
 
@@ -84,7 +82,9 @@ void sortChunks(const std::list<std::string>& chunkFiles) {
 
     std::list<std::string>::const_iterator fileNameIt = chunkFiles.begin();
     for (; fileNameIt != chunkFiles.end(); ++fileNameIt) {
-        sortFileInMemory<IndexFileReader, IndexFileWriter>(*fileNameIt);
+        IndexFileReader reader(*fileNameIt, 1024);
+        IndexFileWriter writer(*fileNameIt, 1024);
+        sortFileInMemory(reader, writer);
 
         std::cout << "Chunk " << *fileNameIt << " sorted\n";
     }
@@ -112,7 +112,9 @@ void mergeChunks(const std::list<std::string>& chunkFiles, const char* outputFil
 void createIndex(const char* dataFileName, const char* chunkDir, const char* outputFileName) {
     std::list<std::string> chunkFiles;
 
-    createChunks(dataFileName, chunkDir, chunkFiles);
+    const size_t ITEMS_IN_CHUNK = (1 << 20);
+
+    createChunks(dataFileName, chunkDir, chunkFiles, ITEMS_IN_CHUNK);
     sortChunks(chunkFiles);
     mergeChunks(chunkFiles, outputFileName);
 }
