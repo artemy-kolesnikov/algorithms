@@ -82,9 +82,7 @@ void sortChunks(const std::list<std::string>& chunkFiles) {
 
     std::list<std::string>::const_iterator fileNameIt = chunkFiles.begin();
     for (; fileNameIt != chunkFiles.end(); ++fileNameIt) {
-        IndexFileReader reader(*fileNameIt, 1024);
-        IndexFileWriter writer(*fileNameIt, 1024);
-        sortFileInMemory(reader, writer);
+        sortFileInMemory<IndexFileReader, IndexFileWriter>(*fileNameIt);
 
         std::cout << "Chunk " << *fileNameIt << " sorted\n";
     }

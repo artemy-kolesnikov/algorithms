@@ -21,8 +21,10 @@ struct WriteOperation : public std::unary_function<typename WriterType::EntryTyp
 }
 
 template <typename ReaderType, typename WriterType>
-void sortFileInMemory(ReaderType& reader, WriterType& writer) {
+void sortFileInMemory(const std::string& fileName) {
     typedef typename ReaderType::EntryType EntryType;
+
+    ReaderType reader(fileName, 1024);
 
     std::vector<EntryType> dataVector;
 
@@ -35,6 +37,7 @@ void sortFileInMemory(ReaderType& reader, WriterType& writer) {
 
     std::sort(dataVector.begin(), dataVector.end());
 
+    WriterType writer(fileName, 1024);
     _Impl::WriteOperation<WriterType> writeOp(&writer);
     std::for_each(dataVector.begin(), dataVector.end(), writeOp);
 }
