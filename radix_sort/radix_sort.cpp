@@ -1,9 +1,9 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
-#include <cstdint>
 #include <cstring>
 #include <iostream>
+#include <stdint.h>
 #include <sys/time.h>
 #include <vector>
 
@@ -55,21 +55,11 @@ void radixSort(Collection& array) {
     uint32_t* currentCounts = counts;
     uint32_t* nextCounts = counts + COUNTS_SIZE;
 
-    for (size_t i = 0; i < LARGEST_ALIQUOT4;) {
+    for (size_t i = 0; i < ARRAY_SIZE;) {
         ++(currentCounts[getRadix(sorted[i++], 0) + 1]);
-        ++(currentCounts[getRadix(sorted[i++], 0) + 1]);
-        ++(currentCounts[getRadix(sorted[i++], 0) + 1]);
-        ++(currentCounts[getRadix(sorted[i++], 0) + 1]);
-    }
-
-    for (size_t i = LARGEST_ALIQUOT4; i < ARRAY_SIZE; ++i) {
-        ++(currentCounts[getRadix(sorted[i], 0) + 1]);
     }
 
     for (size_t i = 1; i < COUNTS_SIZE;) {
-        currentCounts[i++] += currentCounts[i - 1];
-        currentCounts[i++] += currentCounts[i - 1];
-        currentCounts[i++] += currentCounts[i - 1];
         currentCounts[i++] += currentCounts[i - 1];
     }
 
@@ -77,52 +67,14 @@ void radixSort(Collection& array) {
     size_t countsIndex = 0;
     ValueType* value = 0;
     for (uint8_t r = 0; r < RADIX - 1; ++r) {
-        const ValueType * const firstLast = sorted + LARGEST_ALIQUOT4;
-        value = sorted;
-        for (; value < firstLast; ) {
-            tmpArrayIndex = (currentCounts[getRadix(*value, r)])++;
-            buffer[tmpArrayIndex] = *value;
+        for (size_t index = 0; index < ARRAY_SIZE; ++index) {
+            tmpArrayIndex = (currentCounts[getRadix(sorted[index], r)])++;
+            buffer[tmpArrayIndex] = sorted[index];
             countsIndex = getRadix(buffer[tmpArrayIndex], r + 1) + 1;
             ++(nextCounts[countsIndex]);
-
-            ++value;
-
-            tmpArrayIndex = (currentCounts[getRadix(*value, r)])++;
-            buffer[tmpArrayIndex] = *value;
-            countsIndex = getRadix(buffer[tmpArrayIndex], r + 1) + 1;
-            ++(nextCounts[countsIndex]);
-
-            ++value;
-
-            tmpArrayIndex = (currentCounts[getRadix(*value, r)])++;
-            buffer[tmpArrayIndex] = *value;
-            countsIndex = getRadix(buffer[tmpArrayIndex], r + 1) + 1;
-            ++(nextCounts[countsIndex]);
-
-            ++value;
-
-            tmpArrayIndex = (currentCounts[getRadix(*value, r)])++;
-            buffer[tmpArrayIndex] = *value;
-            countsIndex = getRadix(buffer[tmpArrayIndex], r + 1) + 1;
-            ++(nextCounts[countsIndex]);
-
-            ++value;
-        }
-
-        const ValueType * const secondLast = sorted + ARRAY_SIZE;
-        for (; value < secondLast; ) {
-            tmpArrayIndex = (currentCounts[getRadix(*value, r)])++;
-            buffer[tmpArrayIndex] = *value;
-
-            ++(nextCounts[getRadix(buffer[tmpArrayIndex], r + 1) + 1]);
-
-            ++value;
         }
 
         for (size_t i = 1; i < COUNTS_SIZE;) {
-            nextCounts[i++] += nextCounts[i - 1];
-            nextCounts[i++] += nextCounts[i - 1];
-            nextCounts[i++] += nextCounts[i - 1];
             nextCounts[i++] += nextCounts[i - 1];
         }
 
