@@ -31,9 +31,6 @@ void radixSort(Collection& array) {
     const size_t ARRAY_SIZE = array.size();
     const size_t MAX_STACK_ARRAY_SIZE = 0xFF;
 
-    const size_t LARGEST_ALIQUOT4 = ARRAY_SIZE & ~3;
-    const size_t REST_SIZE = ARRAY_SIZE - LARGEST_ALIQUOT4;
-
     ValueType stackTmpArray[MAX_STACK_ARRAY_SIZE];
 
     std::vector<ValueType> tmpVector;
