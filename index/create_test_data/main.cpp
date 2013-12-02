@@ -7,6 +7,7 @@
 #include <archive.h>
 #include <data.h>
 #include <exception.h>
+#include <filewriter.h>
 
 namespace {
 
@@ -21,24 +22,14 @@ void getRandKey(Key& key) {
 }
 
 void createTestData(const char* outFileName, size_t recordCount) {
-    std::ofstream out(outFileName, std::ios::out | std::ios::binary);
-
-    if (!out.is_open()) {
-        throw Exception() << "Can't open file" << outFileName;
-    }
-
-    std::vector<unsigned char> data;
+    FileWriter<DataEntry> writer(outFileName);
 
     for (size_t i = 0; i < recordCount; ++i) {
         DataHeader dataHeader(0, rand() % 100);
         getRandKey(dataHeader.key);
-        data.resize(dataHeader.size, 0);
 
-        OutArchive outArchive(DataHeader::bytesUsed());
-        dataHeader.serialize(outArchive);
-        out.write(&outArchive.getBuffer().front(), outArchive.getBuffer().size());
-
-        out.write(reinterpret_cast<const char*>(&data[0]), data.size());
+        DataEntry entry(dataHeader, std::vector<char>(dataHeader.size));
+        writer.write(entry);
     }
 }
 

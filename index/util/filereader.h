@@ -10,31 +10,34 @@
 #include <archive.h>
 #include <exception.h>
 
+#include <iostream>
+
 template <typename Entry>
 class FileReader : boost::noncopyable {
 public:
     typedef Entry EntryType;
 
-    explicit FileReader(const std::string& fileName, size_t countInBuffer = 1) :
-            in(fileName.c_str()),
-            buffer(std::max(countInBuffer, size_t(1)) * EntryType::bytesUsed(), 0) {
+    explicit FileReader(const std::string& fName) :
+            in(fName.c_str()), fileName(fName) {
         if (!in.is_open()) {
-            throw Exception() << "Can't open file" << fileName;
+            throw Exception() << "Can't open file" << fName;
         }
-
-        in.read(&buffer.front(), buffer.size());
-        inArchive.setBuffer(&buffer.front(), &buffer.front() + in.gcount());
     }
 
     bool read(EntryType& entry) {
-        if (inArchive.eof()) {
-            in.read(&buffer.front(), buffer.size());
-            inArchive.setBuffer(&buffer.front(), &buffer.front() + in.gcount());
-        }
+        std::vector<char> buffer(entry.bytesUsed(), 0);
+        in.read(&buffer.front(), buffer.size());
 
-        if (inArchive.eof()) {
+        if (in.gcount() == 0) {
             return false;
         }
+
+        if (in.gcount() < buffer.size()) {
+            throw Exception() << "Can't read" << buffer.size() << "bytes from file" << fileName;
+        }
+
+        InArchive inArchive;
+        inArchive.setBuffer(&buffer.front(), &buffer.front() + buffer.size());
 
         entry.deserialize(inArchive);
 
@@ -51,9 +54,8 @@ public:
 
 private:
     std::ifstream in;
-    std::vector<char> buffer;
-    InArchive inArchive;
     EntryType lastRead;
+    std::string fileName;
 };
 
 template <typename FileReader>
@@ -61,8 +63,8 @@ class CopyableFileReader {
 public:
     typedef typename FileReader::EntryType EntryType;
 
-    explicit CopyableFileReader(const std::string& fileName, size_t countInBuffer = 1) :
-            impl(new FileReader(fileName, countInBuffer)) {}
+    explicit CopyableFileReader(const std::string& fileName) :
+            impl(new FileReader(fileName)) {}
 
     bool read(EntryType& entry) {
         return impl->read(entry);

@@ -24,20 +24,18 @@ template <typename ReaderType, typename WriterType>
 void sortFileInMemory(const std::string& fileName) {
     typedef typename ReaderType::EntryType EntryType;
 
-    ReaderType reader(fileName, 1024);
+    ReaderType reader(fileName);
 
     std::vector<EntryType> dataVector;
 
     EntryType entry;
     while (reader.read(entry)) {
-        assert(entry.canary == DataHeader::CANARY);
-
         dataVector.push_back(entry);
     }
 
     std::sort(dataVector.begin(), dataVector.end());
 
-    WriterType writer(fileName, 1024);
+    WriterType writer(fileName);
     _Impl::WriteOperation<WriterType> writeOp(&writer);
     std::for_each(dataVector.begin(), dataVector.end(), writeOp);
 }

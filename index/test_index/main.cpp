@@ -13,7 +13,7 @@ void printUsage() {
 void testIndex(const char* indexFileName) {
     Key prevKey;
 
-    FileReader<IndexEntry> indexFileReader(indexFileName, 1024);
+    FileReader<IndexEntry> indexFileReader(indexFileName);
 
     size_t count = 0;
 

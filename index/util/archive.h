@@ -31,6 +31,10 @@ public:
         currentPtr += size;
     }
 
+    size_t available() const {
+        return bufferEnd - currentPtr;
+    }
+
     const std::vector<char>& getBuffer() const {
         return buffer;
     }

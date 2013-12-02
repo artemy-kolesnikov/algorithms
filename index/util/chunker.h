@@ -19,7 +19,7 @@ public:
             chunkCounter(0) {
         std::string chunkFileName = getChunkFileName();
         chunkFileNames.push_back(chunkFileName);
-        fileWriter.reset(new FileWriter<EntryType>(chunkFileName, 1024));
+        fileWriter.reset(new FileWriter<EntryType>(chunkFileName));
     }
 
     void add(const EntryType& entry) {
@@ -31,17 +31,13 @@ public:
             ++chunkCounter;
             std::string chunkFileName = getChunkFileName();
             chunkFileNames.push_back(chunkFileName);
-            fileWriter.reset(new FileWriter<EntryType>(chunkFileName, 1024));
+            fileWriter.reset(new FileWriter<EntryType>(chunkFileName));
             chunkDataCounter = 0;
         }
     }
 
     const std::list<std::string> getChunkFileNames() const {
         return chunkFileNames;
-    }
-
-    void flush() {
-        fileWriter->flush();
     }
 
 private:

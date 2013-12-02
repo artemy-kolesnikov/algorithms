@@ -21,7 +21,7 @@
 namespace {
 
 void printUsage() {
-    std::cout << "Usage: create_index data_file_name out_file_name\n";
+    std::cout << "Usage: create_index data_file_name chunk_dir out_file_name\n";
 }
 
 typedef FileReader<IndexEntry> IndexFileReader;
@@ -35,9 +35,6 @@ typedef Merger<IndexEntry, CopyableIndexFileReader, CopyableIndexFileWriter> Ind
 typedef Chunker<IndexEntry> IndexChunker;
 
 void createChunks(const char* dataFileName, const char* chunkDir, std::list<std::string>& chunkFiles, size_t itemsInChunk) {
-    std::vector<char> dataHeaderBuffer(DataHeader::bytesUsed(), 0);
-    InArchive inArchive(&dataHeaderBuffer.front(), &dataHeaderBuffer.front() + dataHeaderBuffer.size());
-
     std::cout << "Creating chunks...\n";
 
     size_t count = 0;
@@ -55,7 +52,9 @@ void createChunks(const char* dataFileName, const char* chunkDir, std::list<std:
 
     while (ptr < endPtr) {
         DataHeader dataHeader;
-        inArchive.setBuffer(ptr, ptr + DataHeader::bytesUsed());
+
+        InArchive inArchive;
+        inArchive.setBuffer(ptr, ptr + dataHeader.bytesUsed());
 
         dataHeader.deserialize(inArchive);
 
@@ -63,7 +62,7 @@ void createChunks(const char* dataFileName, const char* chunkDir, std::list<std:
 
         chunker.add(IndexEntry(dataHeader.key, ptr - beginPtr));
 
-        ptr += DataHeader::bytesUsed() + dataHeader.size;
+        ptr += dataHeader.bytesUsed() + dataHeader.size;
 
         ++count;
     }
@@ -71,8 +70,6 @@ void createChunks(const char* dataFileName, const char* chunkDir, std::list<std:
     std::cout << "Done\n";
 
     std::cout << count << " data items" << "\n";
-
-    chunker.flush();
 
     chunkFiles = chunker.getChunkFileNames();
 }

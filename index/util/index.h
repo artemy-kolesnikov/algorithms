@@ -33,8 +33,8 @@ struct IndexEntry {
         in.read(canary);
     }
 
-    static size_t bytesUsed() {
-        return (Key::bytesUsed() + sizeof(uint64_t) + sizeof(uint64_t));
+    size_t bytesUsed() const {
+        return (key.bytesUsed() + sizeof(uint64_t) + sizeof(uint64_t));
     }
 
     Key key;

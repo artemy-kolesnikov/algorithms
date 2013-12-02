@@ -43,7 +43,7 @@ public:
         in.read(&front(), size());
     }
 
-    static size_t bytesUsed() {
+    size_t bytesUsed() const {
         return sizeof(Key::value_type) * Key::SIZE;
     }
 };
@@ -84,7 +84,43 @@ public:
         in.read(size);
     }
 
-    static size_t bytesUsed() {
-        return Key::bytesUsed() + sizeof(uint64_t) + sizeof(uint64_t) + sizeof(uint64_t);
+    size_t bytesUsed() const {
+        return key.bytesUsed() + sizeof(uint64_t) + sizeof(uint64_t) + sizeof(uint64_t);
     }
+};
+
+class DataEntry {
+public:
+    DataEntry() {}
+
+    DataEntry(const DataHeader& header_, const std::vector<char>& data_) :
+            header(header_),
+            data(data_) {}
+
+    void serialize(OutArchive& out) const {
+        header.serialize(out);
+        if (!data.empty()) {
+            out.write(&data.front(), data.size());
+        }
+    }
+
+    void deserialize(InArchive& in) {
+        header.deserialize(in);
+        if (header.size) {
+            data.resize(header.size);
+            in.read(&data.front(), data.size());
+        }
+    }
+
+    size_t bytesUsed() const {
+        return header.bytesUsed() + data.size();
+    }
+
+    bool operator < (const DataEntry& other) const {
+        return header.key < other.header.key;
+    }
+
+private:
+    DataHeader header;
+    std::vector<char> data;
 };
