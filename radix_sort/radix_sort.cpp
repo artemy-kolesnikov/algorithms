@@ -7,14 +7,12 @@
 #include <sys/time.h>
 #include <vector>
 
-size_t getRadix(int val, int num) {
-	return (val >> (8 * num)) & 0xFF;
-}
+#include <iterator>
 
 size_t getRandValue() {
     int result = 0;
 
-    result |= (rand() % 255) << 0;
+    result |= (rand() % 10) << 0;
     result |= (rand() % 255) << 8;
     result |= (rand() % 255) << 16;
     result |= (rand() % 255) << 24;
@@ -22,66 +20,56 @@ size_t getRandValue() {
     return result;
 }
 
-template <typename Collection>
-void radixSort(Collection& array) {
-    typedef typename Collection::value_type ValueType;
+template <typename RandomAcessIterator>
+void radix_sort(RandomAcessIterator begin, RandomAcessIterator end) {
+    typedef typename RandomAcessIterator::value_type ValueType;
 
-    const size_t RADIX = 4;
-    const size_t COUNTS_SIZE = 0x101;
-    const size_t ARRAY_SIZE = array.size();
+    const size_t RADIX = sizeof(ValueType);
+    const size_t SIZE = end - begin;
+
     const size_t MAX_STACK_ARRAY_SIZE = 0xFF;
-
     ValueType stackTmpArray[MAX_STACK_ARRAY_SIZE];
 
     std::vector<ValueType> tmpVector;
 
-    ValueType* tmpArray = 0;
-    if (ARRAY_SIZE <= MAX_STACK_ARRAY_SIZE) {
-        tmpArray = stackTmpArray;
+    ValueType* srcRef = &*begin;
+    ValueType* auxRef = 0;
+
+    if (SIZE <= MAX_STACK_ARRAY_SIZE) {
+        auxRef = stackTmpArray;
     } else {
-        tmpVector.resize(ARRAY_SIZE);
-        tmpArray = &tmpVector[0];
+        tmpVector.resize(SIZE);
+        auxRef = &tmpVector[0];
     }
 
-    ValueType* sorted = &array.front();
-    ValueType* buffer = tmpArray;
+    size_t COUNT_SIZE = 0x101;
 
-    uint32_t counts[COUNTS_SIZE * RADIX];
-    memset(counts, 0, sizeof(uint32_t) * COUNTS_SIZE * RADIX);
+    uint32_t counts[COUNT_SIZE][RADIX];
+    memset(counts, 0, sizeof(uint32_t) * COUNT_SIZE * RADIX);
 
-    uint32_t* currentCounts = counts;
-    uint32_t* nextCounts = counts + COUNTS_SIZE;
-
-    for (size_t i = 0; i < ARRAY_SIZE;) {
-        ++(currentCounts[getRadix(sorted[i++], 0) + 1]);
+    const uint8_t* ptr = reinterpret_cast<const uint8_t*>(srcRef);
+    for (size_t i = 0; i < SIZE; ++i) {
+        for (uint8_t r = 0; r < RADIX; ++r, ++ptr) {
+            ++counts[*ptr + 1][r];
+        }
     }
 
-    for (size_t i = 1; i < COUNTS_SIZE;) {
-        currentCounts[i++] += currentCounts[i - 1];
+    uint32_t* countsPtr = reinterpret_cast<uint32_t*>(counts);
+    for (size_t i = 0; i < COUNT_SIZE * RADIX; ++i, ++countsPtr) {
+        *(countsPtr + RADIX) += *countsPtr;
     }
 
-    size_t tmpArrayIndex = 0;
-    size_t countsIndex = 0;
-    ValueType* value = 0;
-    for (uint8_t r = 0; r < RADIX - 1; ++r) {
-        for (size_t index = 0; index < ARRAY_SIZE; ++index) {
-            tmpArrayIndex = (currentCounts[getRadix(sorted[index], r)])++;
-            buffer[tmpArrayIndex] = sorted[index];
-            countsIndex = getRadix(buffer[tmpArrayIndex], r + 1) + 1;
-            ++(nextCounts[countsIndex]);
+    for (uint8_t r = 0; r < RADIX; ++r) {
+        const uint8_t* ptr = reinterpret_cast<const uint8_t*>(srcRef) + r;
+        for (size_t i = 0; i < SIZE; ++i, ptr += RADIX) {
+            auxRef[counts[*ptr][r]++] = srcRef[i];
         }
 
-        for (size_t i = 1; i < COUNTS_SIZE;) {
-            nextCounts[i++] += nextCounts[i - 1];
-        }
-
-        currentCounts += COUNTS_SIZE;
-        nextCounts += COUNTS_SIZE;
-        std::swap(sorted, buffer);
+        std::swap(srcRef, auxRef);
     }
 
-    for (size_t i = 0; i < ARRAY_SIZE; ++i) {
-        buffer[(currentCounts[getRadix(sorted[i], RADIX - 1)])++] = sorted[i];
+    if (RADIX == 1) {
+        std::copy(srcRef, srcRef + SIZE, begin);
     }
 }
 
@@ -94,20 +82,23 @@ std::pair<float, float> evaluate(size_t size) {
 
     struct timeval start, end;
 
-    typedef unsigned long ValueType;
+    typedef uint32_t ValueType;
 
     const size_t SIZE = size;
     for (size_t i = 0; i < 10000; ++i) {
         std::vector<ValueType> vec1(SIZE);
         std::vector<ValueType> vec2(SIZE);
+        std::vector<ValueType> vec(SIZE);
         for (size_t i = 0; i < SIZE; ++i) {
             ValueType value = getRandValue();
-            vec1[i] = value;
-            vec2[i] = value;
+            vec[i] = value;
         }
 
+        std::copy(vec.begin(), vec.end(), vec1.begin());
+        std::copy(vec.begin(), vec.end(), vec2.begin());
+
         gettimeofday(&start, NULL);
-        radixSort(vec1);
+        radix_sort(vec1.begin(), vec1.end());
         gettimeofday(&end, NULL);
 
         int seconds  = end.tv_sec  - start.tv_sec;
@@ -137,11 +128,11 @@ std::pair<float, float> evaluate(size_t size) {
 }
 
 int main(int argc, char* argv[]) {
-    for (size_t i = 2; i <= 100; ++i) {
+    for (size_t i = 0; i <= 100; ++i) {
         std::pair<float, float> result = evaluate(i);
         std::cout << i << " " << result.first << " " << result.second << "\n";
         if (result.first < result.second) {
-            break;
+            //break;
         }
     }
 
