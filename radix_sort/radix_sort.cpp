@@ -12,7 +12,7 @@
 size_t getRandValue() {
     int result = 0;
 
-    result |= (rand() % 10) << 0;
+    result |= (rand() % 255) << 0;
     result |= (rand() % 255) << 8;
     result |= (rand() % 255) << 16;
     result |= (rand() % 255) << 24;
@@ -42,10 +42,9 @@ void radix_sort(RandomAcessIterator begin, RandomAcessIterator end) {
         auxRef = &tmpVector[0];
     }
 
-    size_t COUNT_SIZE = 0x101;
+    const size_t COUNT_SIZE = 0x100;
 
-    uint32_t counts[COUNT_SIZE][RADIX];
-    memset(counts, 0, sizeof(uint32_t) * COUNT_SIZE * RADIX);
+    uint32_t counts[COUNT_SIZE][RADIX] = {0};
 
     const uint8_t* ptr = reinterpret_cast<const uint8_t*>(srcRef);
     for (size_t i = 0; i < SIZE; ++i) {
@@ -55,7 +54,7 @@ void radix_sort(RandomAcessIterator begin, RandomAcessIterator end) {
     }
 
     uint32_t* countsPtr = reinterpret_cast<uint32_t*>(counts);
-    for (size_t i = 0; i < COUNT_SIZE * RADIX; ++i, ++countsPtr) {
+    for (size_t i = 0; i < (COUNT_SIZE - 1)* RADIX; ++i, ++countsPtr) {
         *(countsPtr + RADIX) += *countsPtr;
     }
 
