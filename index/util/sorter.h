@@ -6,36 +6,40 @@
 
 namespace _Impl {
 
-template <typename WriterType>
-struct WriteOperation : public std::unary_function<typename WriterType::EntryType, void> {
-    explicit WriteOperation(WriterType* writer_) :
-            writer(writer_) {}
+template <typename OutArchive, typename EntryType>
+struct WriteOperation : public std::unary_function<EntryType, void> {
+    explicit WriteOperation(OutArchive* outArchive_) :
+            outArchive(outArchive_) {}
 
-    void operator()(const typename WriterType::EntryType& item) {
-        writer->write(item);
+    void operator()(const EntryType& item) {
+        item.serialize(*outArchive);
     }
 
-    WriterType* writer;
+    OutArchive* outArchive;
 };
 
 }
 
-template <typename ReaderType, typename WriterType>
+template <typename InArchive, typename OutArchive, typename EntryType>
 void sortFileInMemory(const std::string& fileName) {
-    typedef typename ReaderType::EntryType EntryType;
-
-    ReaderType reader(fileName);
+    InArchive inArchive(fileName);
 
     std::vector<EntryType> dataVector;
 
-    EntryType entry;
-    while (reader.read(entry)) {
+    while (true) {
+        EntryType entry;
+        entry.deserialize(inArchive);
+
+        if (inArchive.eof()) {
+            break;
+        }
+
         dataVector.push_back(entry);
     }
 
     std::sort(dataVector.begin(), dataVector.end());
 
-    WriterType writer(fileName);
-    _Impl::WriteOperation<WriterType> writeOp(&writer);
+    OutArchive outArchive(fileName);
+    _Impl::WriteOperation<OutArchive, EntryType> writeOp(&outArchive);
     std::for_each(dataVector.begin(), dataVector.end(), writeOp);
 }

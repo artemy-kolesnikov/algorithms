@@ -1,13 +1,11 @@
-#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
 #include <vector>
 
-#include <archive.h>
+#include <filearchive.h>
 #include <data.h>
 #include <exception.h>
-#include <filewriter.h>
 
 namespace {
 
@@ -22,14 +20,17 @@ void getRandKey(Key& key) {
 }
 
 void createTestData(const char* outFileName, size_t recordCount) {
-    FileWriter<DataEntry> writer(outFileName);
 
+    FileOutArchive archive(outFileName);
     for (size_t i = 0; i < recordCount; ++i) {
-        DataHeader dataHeader(0, rand() % 100);
+        std::vector<char> data(rand() % 100);
+
+        DataHeader dataHeader(0, data.size());
         getRandKey(dataHeader.key);
 
-        DataEntry entry(dataHeader, std::vector<char>(dataHeader.size));
-        writer.write(entry);
+        DataEntry entry(dataHeader, data);
+
+        entry.serialize(archive);
     }
 }
 

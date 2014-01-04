@@ -4,37 +4,37 @@
 #include <list>
 #include <queue>
 
-template <typename ItemType, typename ReaderType, typename WriterType>
+template <typename ItemType, typename InArchive, typename OutArchive>
 class Merger {
     struct ItemHolder {
-        const ItemType* item;
-        ReaderType *reader;
+        ItemType item;
+        InArchive *inArchive;
 
-        ItemHolder(ReaderType *r) : reader(r) {}
+        ItemHolder(InArchive *archive) : inArchive(archive) {}
 
         bool operator < (const ItemHolder& other) const {
-            return !(*item < *other.item);
+            return !(item < other.item);
         }
 
         bool readNextItem() {
-            item = reader->read();
-            return (item != 0);
+            item.deserialize(*inArchive);
+            return !inArchive->eof();
         }
     };
 
     typedef std::priority_queue<ItemHolder> PriorityQueueType;
 
 public:
-    Merger(const std::list<ReaderType>& readers_, const WriterType& writer_) :
-            readers(readers_),
-            writer(writer_) {}
+    Merger(const std::list<InArchive>& archives, const OutArchive& outArchive_) :
+            inArchives(archives),
+            outArchive(outArchive_) {}
 
     void merge() {
         PriorityQueueType priorityQueue;
 
-        typename std::list<ReaderType>::iterator readerIt = readers.begin();
-        for (; readerIt != readers.end(); ++readerIt) {
-            ItemHolder holder(&*readerIt);
+        typename std::list<InArchive>::iterator archIt = inArchives.begin();
+        for (; archIt != inArchives.end(); ++archIt) {
+            ItemHolder holder(&*archIt);
             if (holder.readNextItem()) {
                 priorityQueue.push(holder);
             }
@@ -44,12 +44,12 @@ public:
             ItemHolder holder = priorityQueue.top();
             priorityQueue.pop();
 
-            writer.write(*holder.item);
+            holder.item.serialize(outArchive);
 
             if (holder.readNextItem()) {
                 if (priorityQueue.empty()) {
                     do {
-                        writer.write(*holder.item);
+                        holder.item.serialize(outArchive);
                     } while (holder.readNextItem());
                 } else {
                     priorityQueue.push(holder);
@@ -59,6 +59,6 @@ public:
     }
 
 private:
-    std::list<ReaderType> readers;
-    WriterType writer;
+    std::list<InArchive> inArchives;
+    OutArchive outArchive;
 };

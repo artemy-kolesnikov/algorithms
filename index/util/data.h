@@ -7,8 +7,6 @@
 #include <stdint.h>
 #include <vector>
 
-#include <archive.h>
-
 class Key : std::vector<unsigned char> {
 public:
     enum {
@@ -24,27 +22,25 @@ public:
     using std::vector<unsigned char>::value_type;
 
     bool operator < (const Key& other) const {
-        return (memcmp(&front(), &other.front(), sizeof(unsigned char) * size()) < 0);
+        return (memcmp(&front(), &other.front(), sizeof(unsigned char) * SIZE) < 0);
     }
 
     bool operator == (const Key& other) const {
-        return (memcmp(&front(), &other.front(), sizeof(unsigned char) * size()) == 0);
+        return (memcmp(&front(), &other.front(), sizeof(unsigned char) * SIZE) == 0);
     }
 
     bool operator > (const Key& other) const {
-        return (memcmp(&front(), &other.front(), sizeof(unsigned char) * size()) > 0);
+        return (memcmp(&front(), &other.front(), sizeof(unsigned char) * SIZE) > 0);
     }
 
+    template <typename OutArchive>
     void serialize(OutArchive& out) const {
-        out.write(&front(), size());
+        out.write(&front(), SIZE);
     }
 
+    template <typename InArchive>
     void deserialize(InArchive& in) {
-        in.read(&front(), size());
-    }
-
-    size_t bytesUsed() const {
-        return sizeof(Key::value_type) * Key::SIZE;
+        in.read(&front(), SIZE);
     }
 };
 
@@ -55,37 +51,29 @@ public:
     };
 
     DataHeader() :
-            flags(0),
             canary(CANARY),
-            size(0) { }
+            dataSize(0) { }
 
     DataHeader(uint64_t flg, uint64_t sz) : 
-            flags(flg),
             canary(CANARY),
-            size(sz) { }
+            dataSize(sz) { }
 
     Key             key;
-    uint64_t        flags;
     uint64_t        canary;
-    uint64_t        size;
+    uint64_t        dataSize;
 
+    template <typename OutArchive>
     void serialize(OutArchive& out) const {
         key.serialize(out);
-
-        out.write(flags);
         out.write(canary);
-        out.write(size);
+        out.write(dataSize);
     }
 
+    template <typename InArchive>
     void deserialize(InArchive& in) {
         key.deserialize(in);
-        in.read(flags);
         in.read(canary);
-        in.read(size);
-    }
-
-    size_t bytesUsed() const {
-        return key.bytesUsed() + sizeof(uint64_t) + sizeof(uint64_t) + sizeof(uint64_t);
+        in.read(dataSize);
     }
 };
 
@@ -97,6 +85,7 @@ public:
             header(header_),
             data(data_) {}
 
+    template <typename OutArchive>
     void serialize(OutArchive& out) const {
         header.serialize(out);
         if (!data.empty()) {
@@ -104,23 +93,24 @@ public:
         }
     }
 
+    template <typename InArchive>
     void deserialize(InArchive& in) {
         header.deserialize(in);
-        if (header.size) {
-            data.resize(header.size);
+        data.clear();
+        if (header.dataSize) {
+            data.resize(header.dataSize);
             in.read(&data.front(), data.size());
         }
-    }
-
-    size_t bytesUsed() const {
-        return header.bytesUsed() + data.size();
     }
 
     bool operator < (const DataEntry& other) const {
         return header.key < other.header.key;
     }
 
-private:
+    bool isValid() const {
+        return header.canary == DataHeader::CANARY;
+    }
+
     DataHeader header;
     std::vector<char> data;
 };

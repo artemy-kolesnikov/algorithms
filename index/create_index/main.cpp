@@ -8,12 +8,11 @@
 #include <sstream>
 #include <sys/time.h>
 
-#include <archive.h>
 #include <chunker.h>
 #include <data.h>
-#include <filereader.h>
-#include <filewriter.h>
+#include <filearchive.h>
 #include <index.h>
+#include <memarchive.h>
 #include <merger.h>
 #include <mmapper.h>
 #include <sorter.h>
@@ -24,13 +23,7 @@ void printUsage() {
     std::cout << "Usage: create_index data_file_name chunk_dir out_file_name\n";
 }
 
-typedef FileReader<IndexEntry> IndexFileReader;
-typedef FileWriter<IndexEntry> IndexFileWriter;
-
-typedef CopyableFileReader<IndexFileReader> CopyableIndexFileReader;
-typedef CopyableFileWriter<IndexFileWriter> CopyableIndexFileWriter;
-
-typedef Merger<IndexEntry, CopyableIndexFileReader, CopyableIndexFileWriter> IndexMerger;
+typedef Merger<IndexEntry, CopyableFileInArchive, CopyableFileOutArchive> IndexMerger;
 
 typedef Chunker<IndexEntry> IndexChunker;
 
@@ -48,21 +41,21 @@ void createChunks(const char* dataFileName, const char* chunkDir, std::list<std:
     const char* beginPtr = mmapper.getBeginPtr();
     const char* endPtr = mmapper.getEndPtr();
 
-    const char* ptr = beginPtr;
+    MemoryInArchive inArchive(beginPtr, endPtr);
 
-    while (ptr < endPtr) {
+    while (true) {
         DataHeader dataHeader;
-
-        InArchive inArchive;
-        inArchive.setBuffer(ptr, ptr + dataHeader.bytesUsed());
-
         dataHeader.deserialize(inArchive);
+
+        if (inArchive.eof()) {
+            break;
+        }
 
         assert(dataHeader.canary == DataHeader::CANARY);
 
-        chunker.add(IndexEntry(dataHeader.key, ptr - beginPtr));
+        chunker.add(IndexEntry(dataHeader.key, inArchive.pos()));
 
-        ptr += dataHeader.bytesUsed() + dataHeader.size;
+        inArchive.skip(dataHeader.dataSize);
 
         ++count;
     }
@@ -79,7 +72,7 @@ void sortChunks(const std::list<std::string>& chunkFiles) {
 
     std::list<std::string>::const_iterator fileNameIt = chunkFiles.begin();
     for (; fileNameIt != chunkFiles.end(); ++fileNameIt) {
-        sortFileInMemory<IndexFileReader, IndexFileWriter>(*fileNameIt);
+        sortFileInMemory<CopyableFileInArchive, CopyableFileOutArchive, IndexEntry>(*fileNameIt);
 
         std::cout << "Chunk " << *fileNameIt << " sorted\n";
     }
@@ -90,15 +83,15 @@ void sortChunks(const std::list<std::string>& chunkFiles) {
 void mergeChunks(const std::list<std::string>& chunkFiles, const char* outputFileName) {
     std::cout << "Merging chunks...\n";
 
-    std::list<CopyableIndexFileReader> indexReaders;
+    std::list<CopyableFileInArchive> indexArchives;
 
     std::list<std::string>::const_iterator fileNameIt = chunkFiles.begin();
     for (; fileNameIt != chunkFiles.end(); ++fileNameIt) {
-        indexReaders.push_back(CopyableIndexFileReader(*fileNameIt));
+        indexArchives.push_back(CopyableFileInArchive(*fileNameIt));
     }
 
-    CopyableIndexFileWriter indexWriter(outputFileName);
-    IndexMerger merger(indexReaders, indexWriter);
+    CopyableFileOutArchive outArchive(outputFileName);
+    IndexMerger merger(indexArchives, outArchive);
     merger.merge();
 
     std::cout << "Index created\n";

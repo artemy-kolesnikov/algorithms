@@ -3,7 +3,6 @@
 #include <cstring>
 #include <fstream>
 
-#include <archive.h>
 #include <data.h>
 #include <exception.h>
 
@@ -21,20 +20,22 @@ struct IndexEntry {
         return key < other.key;
     }
 
+    template <typename OutArchive>
     void serialize(OutArchive& out) const {
         key.serialize(out);
         out.write(filePos);
         out.write(canary);
     }
 
+    template <typename InArchive>
     void deserialize(InArchive& in) {
         key.deserialize(in);
         in.read(filePos);
         in.read(canary);
     }
-
-    size_t bytesUsed() const {
-        return (key.bytesUsed() + sizeof(uint64_t) + sizeof(uint64_t));
+ 
+    bool isValid() const {
+        return canary == DataHeader::CANARY;
     }
 
     Key key;

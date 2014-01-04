@@ -1,13 +1,13 @@
 #pragma once
 
-#include <list>
-#include <sstream>
-#include <string>
+#include <filearchive.h>
 
 #include <boost/shared_ptr.hpp>
 #include <boost/utility.hpp>
 
-#include <filewriter.h>
+#include <list>
+#include <sstream>
+#include <string>
 
 template <typename EntryType>
 class Chunker : boost::noncopyable {
@@ -19,19 +19,20 @@ public:
             chunkCounter(0) {
         std::string chunkFileName = getChunkFileName();
         chunkFileNames.push_back(chunkFileName);
-        fileWriter.reset(new FileWriter<EntryType>(chunkFileName));
+        fileArchive.reset(new FileOutArchive(chunkFileName));
     }
 
     void add(const EntryType& entry) {
         ++chunkDataCounter;
 
-        fileWriter->write(entry);
+        entry.serialize(*fileArchive.get());
 
         if (chunkDataCounter == countInChunk) {
             ++chunkCounter;
+
             std::string chunkFileName = getChunkFileName();
             chunkFileNames.push_back(chunkFileName);
-            fileWriter.reset(new FileWriter<EntryType>(chunkFileName));
+            fileArchive.reset(new FileOutArchive(chunkFileName));
             chunkDataCounter = 0;
         }
     }
@@ -53,5 +54,5 @@ private:
     size_t chunkDataCounter;
     size_t chunkCounter;
     std::list<std::string> chunkFileNames;
-    boost::shared_ptr< FileWriter<EntryType> > fileWriter;
+    boost::shared_ptr<FileOutArchive> fileArchive;
 };
