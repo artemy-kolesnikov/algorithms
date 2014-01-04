@@ -12,9 +12,7 @@
 #include <data.h>
 #include <filearchive.h>
 #include <index.h>
-#include <memarchive.h>
 #include <merger.h>
-#include <mmapper.h>
 #include <sorter.h>
 
 namespace {
@@ -23,7 +21,7 @@ void printUsage() {
     std::cout << "Usage: create_index data_file_name chunk_dir out_file_name\n";
 }
 
-typedef Merger<IndexEntry, CopyableFileInArchive, CopyableFileOutArchive> IndexMerger;
+typedef Merger<IndexEntry, CopyableFileInArchive> IndexMerger;
 
 typedef Chunker<IndexEntry> IndexChunker;
 
@@ -34,22 +32,11 @@ void createChunks(const char* dataFileName, const char* chunkDir, std::list<std:
 
     IndexChunker chunker(chunkDir, itemsInChunk);
 
-    ReadOnlyMemMapper mmapper(dataFileName);
+    FileInArchive inArchive(dataFileName);
 
-    mmapper.map();
-
-    const char* beginPtr = mmapper.getBeginPtr();
-    const char* endPtr = mmapper.getEndPtr();
-
-    MemoryInArchive inArchive(beginPtr, endPtr);
-
-    while (true) {
+    while (!inArchive.eof()) {
         DataHeader dataHeader;
         dataHeader.deserialize(inArchive);
-
-        if (inArchive.eof()) {
-            break;
-        }
 
         assert(dataHeader.canary == DataHeader::CANARY);
 
@@ -90,9 +77,11 @@ void mergeChunks(const std::list<std::string>& chunkFiles, const char* outputFil
         indexArchives.push_back(CopyableFileInArchive(*fileNameIt));
     }
 
-    CopyableFileOutArchive outArchive(outputFileName);
-    IndexMerger merger(indexArchives, outArchive);
-    merger.merge();
+    IndexMerger merger(indexArchives);
+    FileOutArchive outArchive(outputFileName);
+    merger.merge([&outArchive](const IndexEntry& entry) -> void {
+        entry.serialize(outArchive);
+    });
 
     std::cout << "Index created\n";
 }

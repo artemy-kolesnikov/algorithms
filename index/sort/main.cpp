@@ -11,9 +11,7 @@
 #include <chunker.h>
 #include <data.h>
 #include <filearchive.h>
-#include <memarchive.h>
 #include <merger.h>
-#include <mmapper.h>
 #include <sorter.h>
 
 namespace {
@@ -22,7 +20,7 @@ void printUsage() {
     std::cout << "Usage: sort_file data_file_name tmp_data_dir out_file_name\n";
 }
 
-typedef Merger<DataEntry, CopyableFileInArchive, CopyableFileOutArchive> DataMerger;
+typedef Merger<DataEntry, CopyableFileInArchive> DataMerger;
 
 typedef Chunker<DataEntry> DataChunker;
 
@@ -33,14 +31,7 @@ void createChunks(const char* dataFileName, const char* chunkDir, std::list<std:
 
     DataChunker chunker(chunkDir, itemsInChunk);
 
-    ReadOnlyMemMapper mmapper(dataFileName);
-
-    mmapper.map();
-
-    const char* beginPtr = mmapper.getBeginPtr();
-    const char* endPtr = mmapper.getEndPtr();
-
-    MemoryInArchive inArchive(beginPtr, endPtr);
+    FileInArchive inArchive(dataFileName);
 
     while (!inArchive.eof()) {
         DataEntry data;
@@ -81,9 +72,11 @@ void mergeChunks(const std::list<std::string>& chunkFiles, const char* outputFil
         archives.push_back(CopyableFileInArchive(*fileNameIt));
     }
 
-    CopyableFileOutArchive outArchive(outputFileName);
-    DataMerger merger(archives, outArchive);
-    merger.merge();
+    DataMerger merger(archives);
+    FileOutArchive outArchive(outputFileName);
+    merger.merge([&outArchive](const DataEntry& entry) -> void {
+        entry.serialize(outArchive);
+    });
 
     std::cout << "Done\n";
 }

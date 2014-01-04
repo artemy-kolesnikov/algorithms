@@ -14,17 +14,13 @@ template <typename Entry>
 void testIndex(const char* indexFileName) {
     Entry prev;
 
-    FileInArchive indexFileArchive(indexFileName);
+    FileInArchive inArchive(indexFileName);
 
     size_t count = 0;
 
-    while (true) {
+    while (!inArchive.eof()) {
         Entry entry;
-        entry.deserialize(indexFileArchive);
-
-        if (indexFileArchive.eof()) {
-            break;
-        }
+        entry.deserialize(inArchive);
 
         if (!entry.isValid()) {
             throw Exception() << "Failed data in" << count << "position";

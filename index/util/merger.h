@@ -4,7 +4,7 @@
 #include <list>
 #include <queue>
 
-template <typename ItemType, typename InArchive, typename OutArchive>
+template <typename ItemType, typename InArchive>
 class Merger {
     struct ItemHolder {
         ItemType item;
@@ -17,19 +17,20 @@ class Merger {
         }
 
         bool readNextItem() {
+            bool eof = inArchive->eof();
             item.deserialize(*inArchive);
-            return !inArchive->eof();
+            return !eof;
         }
     };
 
     typedef std::priority_queue<ItemHolder> PriorityQueueType;
 
 public:
-    Merger(const std::list<InArchive>& archives, const OutArchive& outArchive_) :
-            inArchives(archives),
-            outArchive(outArchive_) {}
+    explicit Merger(const std::list<InArchive>& archives) :
+            inArchives(archives) {}
 
-    void merge() {
+    template <typename ProcessFunction>
+    void merge(ProcessFunction process) {
         PriorityQueueType priorityQueue;
 
         typename std::list<InArchive>::iterator archIt = inArchives.begin();
@@ -44,12 +45,12 @@ public:
             ItemHolder holder = priorityQueue.top();
             priorityQueue.pop();
 
-            holder.item.serialize(outArchive);
+            process(holder.item);
 
             if (holder.readNextItem()) {
                 if (priorityQueue.empty()) {
                     do {
-                        holder.item.serialize(outArchive);
+                        process(holder.item);
                     } while (holder.readNextItem());
                 } else {
                     priorityQueue.push(holder);
@@ -60,5 +61,4 @@ public:
 
 private:
     std::list<InArchive> inArchives;
-    OutArchive outArchive;
 };

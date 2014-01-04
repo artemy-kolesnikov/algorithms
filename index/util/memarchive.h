@@ -16,12 +16,12 @@ public:
             currentPos(0) {}
 
     template <typename T>
-    void write(const T& value, typename std::enable_if<!std::is_class<T>::value>::type * = 0) {
+    void write(const T& value, typename std::enable_if<std::is_pod<T>::value>::type * = 0) {
         write(&value, 1);
     }
 
     template <typename T>
-    void write(const T* ptr, size_t count, typename std::enable_if<!std::is_class<T>::value>::type * = 0) {
+    void write(const T* ptr, size_t count, typename std::enable_if<std::is_pod<T>::value>::type * = 0) {
         size_t size = count * sizeof(T);
 
         if (currentPos + size >= buffer.size()) {
@@ -68,19 +68,21 @@ public:
     }
 
     template <typename T>
-    bool read(T& value, typename std::enable_if<!std::is_class<T>::value>::type * = 0) {
+    bool read(T& value, typename std::enable_if<std::is_pod<T>::value>::type * = 0) {
         return read(&value, 1);
     }
 
     template <typename T>
-    bool read(T* ptr, size_t count, typename std::enable_if<!std::is_class<T>::value>::type * = 0) {
+    bool read(T* ptr, size_t count, typename std::enable_if<std::is_pod<T>::value>::type * = 0) {
         if (eof()) {
             return false;
         }
 
         size_t size = sizeof(T) * count;
 
-        assert(currentPtr + size <= bufferEnd);
+        if (currentPtr + size > bufferEnd) {
+            throw Exception() << "Can't read" << size << "bytes from memory because it is out of bounds";
+        }
 
         memcpy(ptr, currentPtr, size);
         currentPtr += size;
@@ -97,7 +99,10 @@ public:
     }
 
     void skip(size_t bytes) {
-        assert(currentPtr + bytes <= bufferEnd);
+        if (currentPtr + bytes > bufferEnd) {
+            throw Exception() << "Can't skip" << bytes << "bytes because it is out of bounds";
+        }
+
         currentPtr += bytes;
     }
 

@@ -1,6 +1,8 @@
 #pragma once
 
 #include <exception.h>
+#include <memarchive.h>
+#include <mmapper.h>
 
 #include <boost/shared_ptr.hpp>
 #include <boost/utility.hpp>
@@ -58,48 +60,40 @@ private:
 class FileInArchive : boost::noncopyable {
 public:
     explicit FileInArchive(const std::string& fName) :
-            in(fName.c_str()), fileName(fName) {
-        if (!in.is_open()) {
-            throw Exception() << "Can't open file" << fName;
-        }
+            fileName(fName),
+            mMapper(fName) {
+        mMapper.map();
+        const char* beginPtr = mMapper.getBeginPtr();
+        const char* endPtr = mMapper.getEndPtr();
+        memArchive.setBuffer(beginPtr, endPtr);
     }
 
     template <typename T>
-    bool read(T& entry, typename std::enable_if<!std::is_class<T>::value>::type * = 0) {
+    bool read(T& entry, typename std::enable_if<std::is_pod<T>::value>::type * = 0) {
         return read(&entry, 1);
     }
 
     template <typename T>
-    bool read(T* ptr, size_t count, typename std::enable_if<!std::is_class<T>::value>::type * = 0) {
+    bool read(T* ptr, size_t count, typename std::enable_if<std::is_pod<T>::value>::type * = 0) {
         size_t bytesToRead = count * sizeof(T);
-        in.read(reinterpret_cast<char*>(ptr), bytesToRead);
-
-        if (in.gcount() == 0) {
-            return false;
-        }
-
-        if (in.gcount() < bytesToRead) {
-            throw Exception() << "Can't read" << bytesToRead << "bytes from file" << fileName;
-        }
-
-        return true;
+        return memArchive.read(reinterpret_cast<char*>(ptr), bytesToRead);
     }
 
     bool eof() {
-        return in.eof();
+        return memArchive.eof();
     }
 
     size_t pos() {
-        return in.tellg();
+        return memArchive.pos();
     }
 
     void skip(size_t bytes) {
-        in.ignore(bytes);
-        //XXX Добавить проверку на eof
+        return memArchive.skip(bytes);
     }
 
 private:
-    std::ifstream in;
+    MemoryInArchive memArchive;
+    ReadOnlyMemMapper mMapper;
     std::string fileName;
 };
 

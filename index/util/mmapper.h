@@ -11,7 +11,7 @@
 
 class ReadOnlyMemMapper : boost::noncopyable {
 public:
-    ReadOnlyMemMapper(const std::string& fName) :
+    explicit ReadOnlyMemMapper(const std::string& fName) :
         fileName(fName),
         fileFd(0),
         beginPtr(0),
