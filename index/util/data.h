@@ -1,10 +1,9 @@
 #pragma once
 
+#include <serializer.h>
+
 #include <cstdlib>
 #include <cstring>
-#include <istream>
-#include <ostream>
-#include <stdint.h>
 #include <vector>
 
 class Key : std::vector<unsigned char> {
@@ -117,11 +116,6 @@ public:
 
     DataHeader header;
     std::vector<char> data;
-};
-
-template <typename T>
-struct IsClassSerializable {
-    static const bool value = false;
 };
 
 template <>

@@ -26,7 +26,7 @@ public:
         out.write(reinterpret_cast<const char*>(ptr), sizeof(T) * count);
     }
 
-    size_t pos() {
+    uint64_t pos() {
         return out.tellp();
     }
 
@@ -49,7 +49,7 @@ public:
         impl->write(ptr, count);
     }
 
-    size_t pos() const {
+    uint64_t pos() const {
         return impl->pos();
     }
 
@@ -79,15 +79,15 @@ public:
         return memArchive.read(reinterpret_cast<char*>(ptr), bytesToRead);
     }
 
-    bool eof() {
+    bool eof() const {
         return memArchive.eof();
     }
 
-    size_t pos() {
+    uint64_t pos() const {
         return memArchive.pos();
     }
 
-    void skip(size_t bytes) {
+    void skip(uint64_t bytes) {
         return memArchive.skip(bytes);
     }
 
@@ -112,16 +112,16 @@ public:
         return impl->read(ptr, count);
     }
 
-    bool eof() {
+    bool eof() const {
         return impl->eof();
     }
 
-    size_t pos() const {
+    uint64_t pos() const {
         return impl->pos();
     }
 
-    void skip(size_t bytes) {
-
+    void skip(uint64_t bytes) {
+        impl->skip(bytes);
     }
 
 private:

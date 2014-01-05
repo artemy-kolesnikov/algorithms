@@ -1,5 +1,7 @@
 #pragma once
 
+#include <chunker.h>
+#include <merger.h>
 #include <serializer.h>
 
 #include <algorithm>
@@ -15,6 +17,21 @@ enum SortEventType {
     EndSortingChunks,
     BeginMergingChunks,
     DoneMergingChunks
+};
+
+namespace _Impl {
+
+const size_t ITEMS_IN_CHUNK = 1 << 20;
+
+struct DummyEventCallback {
+    void operator()(SortEventType, int) {}
+};
+
+struct DefaultChunkerFunction {
+    template <typename Entry, typename Chunker, typename InArchive>
+    void operator()(const Entry& entry, Chunker& chunker, InArchive&) {
+        chunker.add(entry);
+    }
 };
 
 template <typename InArchive, typename OutArchive, typename EntryType, typename CompareFunc = std::less<EntryType> >
@@ -38,19 +55,12 @@ void sortFileInMemory(const std::string& fileName, CompareFunc cmp = std::less<E
     });
 }
 
-namespace _Impl {
+}
 
-const size_t ITEMS_IN_CHUNK = 1 << 20;
-
-struct DummyEventCallback {
-    void operator()(SortEventType, int) {}
-};
-
-template <typename EntryType, typename EventCallback>
-void createChunks(const char* dataFileName, const char* chunkDir, std::list<std::string>& chunkFiles, size_t itemsInChunk, EventCallback eventCallback) {
+template <typename EntryType, typename ChunkerFunction = _Impl::DefaultChunkerFunction, typename EventCallback = _Impl::DummyEventCallback>
+void createChunks(const char* dataFileName, const char* chunkDir, std::list<std::string>& chunkFiles,
+        size_t itemsInChunk, ChunkerFunction chunkerFunction = _Impl::DefaultChunkerFunction(), EventCallback eventCallback = _Impl::DummyEventCallback()) {
     eventCallback(BeginCreatingChunks, 0);
-
-    size_t count = 0;
 
     Chunker<EntryType> chunker(chunkDir, itemsInChunk);
 
@@ -64,9 +74,7 @@ void createChunks(const char* dataFileName, const char* chunkDir, std::list<std:
             throw Exception() << "Read data is not valid";
         }
 
-        chunker.add(data);
-
-        ++count;
+        chunkerFunction(data, chunker, inArchive);
     }
 
     chunkFiles = chunker.getChunkFileNames();
@@ -74,21 +82,21 @@ void createChunks(const char* dataFileName, const char* chunkDir, std::list<std:
     eventCallback(DoneCreatingChunks, chunkFiles.size());
 }
 
-template <typename EntryType, typename CompareFunc, typename EventCallback>
-void sortChunks(const std::list<std::string>& chunkFiles, CompareFunc cmp, EventCallback eventCallback) {
+template <typename EntryType, typename CompareFunc = std::less<EntryType>, typename EventCallback = _Impl::DummyEventCallback>
+void sortChunks(const std::list<std::string>& chunkFiles, CompareFunc cmp = std::less<EntryType>(), EventCallback eventCallback = _Impl::DummyEventCallback()) {
     eventCallback(BeginSortingChunks, 0);
 
     size_t count = 0;
 
     std::list<std::string>::const_iterator fileNameIt = chunkFiles.begin();
     for (; fileNameIt != chunkFiles.end(); ++fileNameIt) {
-        sortFileInMemory<CopyableFileInArchive, CopyableFileOutArchive, EntryType>(*fileNameIt, cmp);
+        _Impl::sortFileInMemory<CopyableFileInArchive, CopyableFileOutArchive, EntryType>(*fileNameIt, cmp);
         eventCallback(ChunkSorted, count++);
     }
 }
 
-template <typename EntryType, typename EventCallback>
-void mergeChunks(const std::list<std::string>& chunkFiles, const char* outputFileName, EventCallback eventCallback) {
+template <typename EntryType, typename EventCallback = _Impl::DummyEventCallback>
+void mergeChunks(const std::list<std::string>& chunkFiles, const char* outputFileName, EventCallback eventCallback = _Impl::DummyEventCallback()) {
     eventCallback(BeginMergingChunks, 0);
 
     std::list<CopyableFileInArchive> archives;
@@ -107,14 +115,12 @@ void mergeChunks(const std::list<std::string>& chunkFiles, const char* outputFil
     eventCallback(DoneMergingChunks, 0);
 }
 
-}
-
 template <typename EntryType, typename CompareFunc, typename EventCallback>
-void externalSortImpl(const char* fileName, const char* chunkDir, const char* outputFileName,
+void externalSort(const char* fileName, const char* chunkDir, const char* outputFileName,
         CompareFunc cmp, size_t itemsInChunk, EventCallback eventCallback) {
     std::list<std::string> chunkFiles;
 
-    _Impl::createChunks<EntryType>(fileName, chunkDir, chunkFiles, itemsInChunk, eventCallback);
-    _Impl::sortChunks<EntryType>(chunkFiles, cmp, eventCallback);
-    _Impl::mergeChunks<EntryType>(chunkFiles, outputFileName, eventCallback);
+    createChunks<EntryType>(fileName, chunkDir, chunkFiles, itemsInChunk, _Impl::DefaultChunkerFunction(), eventCallback);
+    sortChunks<EntryType>(chunkFiles, cmp, eventCallback);
+    mergeChunks<EntryType>(chunkFiles, outputFileName, eventCallback);
 }
