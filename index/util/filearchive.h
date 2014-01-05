@@ -17,12 +17,12 @@ public:
             out(fileName.c_str()) {}
 
     template <typename T>
-    void write(const T& value, typename std::enable_if<!std::is_class<T>::value>::type * = 0) {
+    void write(const T& value, typename std::enable_if<std::is_pod<T>::value>::type * = 0) {
         out.write(reinterpret_cast<const char*>(&value), sizeof(value));
     }
 
     template <typename T>
-    void write(const T* ptr, size_t count, typename std::enable_if<!std::is_class<T>::value>::type * = 0) {
+    void write(const T* ptr, size_t count, typename std::enable_if<std::is_pod<T>::value>::type * = 0) {
         out.write(reinterpret_cast<const char*>(ptr), sizeof(T) * count);
     }
 

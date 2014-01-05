@@ -1,17 +1,6 @@
-#include <cassert>
 #include <iostream>
-#include <iterator>
-#include <stdexcept>
-#include <vector>
-#include <cmath>
-#include <boost/shared_ptr.hpp>
-#include <sstream>
-#include <sys/time.h>
 
-#include <chunker.h>
 #include <data.h>
-#include <filearchive.h>
-#include <merger.h>
 #include <sorter.h>
 
 namespace {
@@ -20,76 +9,33 @@ void printUsage() {
     std::cout << "Usage: sort_file data_file_name tmp_data_dir out_file_name\n";
 }
 
-typedef Merger<DataEntry, CopyableFileInArchive> DataMerger;
-
-typedef Chunker<DataEntry> DataChunker;
-
-void createChunks(const char* dataFileName, const char* chunkDir, std::list<std::string>& chunkFiles, size_t itemsInChunk) {
-    std::cout << "Creating chunks...\n";
-
-    size_t count = 0;
-
-    DataChunker chunker(chunkDir, itemsInChunk);
-
-    FileInArchive inArchive(dataFileName);
-
-    while (!inArchive.eof()) {
-        DataEntry data;
-        data.deserialize(inArchive);
-
-        assert(data.header.canary == DataHeader::CANARY);
-
-        chunker.add(data);
-
-        ++count;
+struct EventCallback {
+    void operator()(SortEventType type, int param) {
+        switch (type) {
+            case BeginCreatingChunks:
+                std::cout << "Creating chunks..." << "\n";
+                break;
+            case DoneCreatingChunks:
+                std::cout << param << " chunks created\n";
+                break;
+            case BeginSortingChunks:
+                std::cout << "Sorting chunks..." << "\n";
+                break;
+            case ChunkSorted:
+                std::cout << "Chunk " << param << " sorted\n";
+                break;
+            case EndSortingChunks:
+                std::cout << "Done" << "\n";
+                break;
+            case BeginMergingChunks:
+                std::cout << "Merging chunks..." << "\n";
+                break;
+            case DoneMergingChunks:
+                std::cout << "Done" << "\n";
+                break;
+        }
     }
-
-    std::cout << "Done\n";
-
-    std::cout << count << " data items" << "\n";
-
-    chunkFiles = chunker.getChunkFileNames();
-}
-
-void sortChunks(const std::list<std::string>& chunkFiles) {
-    std::cout << "Sorting chunks\n";
-
-    std::list<std::string>::const_iterator fileNameIt = chunkFiles.begin();
-    for (; fileNameIt != chunkFiles.end(); ++fileNameIt) {
-        sortFileInMemory<CopyableFileInArchive, CopyableFileOutArchive, DataEntry>(*fileNameIt);
-
-        std::cout << "Chunk " << *fileNameIt << " sorted\n";
-    }
-}
-
-void mergeChunks(const std::list<std::string>& chunkFiles, const char* outputFileName) {
-    std::cout << "Merging chunks...\n";
-
-    std::list<CopyableFileInArchive> archives;
-
-    std::list<std::string>::const_iterator fileNameIt = chunkFiles.begin();
-    for (; fileNameIt != chunkFiles.end(); ++fileNameIt) {
-        archives.push_back(CopyableFileInArchive(*fileNameIt));
-    }
-
-    DataMerger merger(archives);
-    FileOutArchive outArchive(outputFileName);
-    merger.merge([&outArchive](const DataEntry& entry) -> void {
-        entry.serialize(outArchive);
-    });
-
-    std::cout << "Done\n";
-}
-
-void sortData(const char* dataFileName, const char* chunkDir, const char* outputFileName) {
-    std::list<std::string> chunkFiles;
-
-    const size_t ITEMS_IN_CHUNK = (1 << 20);
-
-    createChunks(dataFileName, chunkDir, chunkFiles, ITEMS_IN_CHUNK);
-    sortChunks(chunkFiles);
-    mergeChunks(chunkFiles, outputFileName);
-}
+};
 
 }
 
@@ -104,7 +50,7 @@ int main(int argc, char* argv[]) {
     const char* outputFileName = argv[3];
 
     try {
-        sortData(dataFileName, chunkDir, outputFileName);
+        externalSort<DataEntry>(dataFileName, chunkDir, outputFileName, std::less<DataEntry>(), 1 << 20, EventCallback());
     } catch (std::exception& ex) {
         std::cerr << ex.what() << "\n";
         return 1;

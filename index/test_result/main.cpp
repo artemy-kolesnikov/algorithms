@@ -1,8 +1,9 @@
 #include <iostream>
 
-#include <index.h>
+#include <exception.h>
 #include <filearchive.h>
-#include <exception>
+#include <index.h>
+#include <serializer.h>
 
 namespace {
 
@@ -11,18 +12,18 @@ void printUsage() {
 }
 
 template <typename Entry>
-void testIndex(const char* indexFileName) {
+void test(const char* fileName) {
     Entry prev;
 
-    FileInArchive inArchive(indexFileName);
+    FileInArchive inArchive(fileName);
 
     size_t count = 0;
 
     while (!inArchive.eof()) {
         Entry entry;
-        entry.deserialize(inArchive);
+        deserialize(entry, inArchive);
 
-        if (!entry.isValid()) {
+        if (!isValid(entry)) {
             throw Exception() << "Failed data in" << count << "position";
         }
 
@@ -51,9 +52,9 @@ int main(int argc, char* argv[]) {
 
     try {
         if (entryType == "sorted") {
-            testIndex<DataEntry>(fileName);
+            test<DataEntry>(fileName);
         } else if (entryType == "index") {
-            testIndex<IndexEntry>(fileName);
+            test<IndexEntry>(fileName);
         } else {
             throw Exception() << "Unknown entry type" << entryType;
         }

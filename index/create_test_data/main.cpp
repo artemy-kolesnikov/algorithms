@@ -3,9 +3,10 @@
 #include <stdexcept>
 #include <vector>
 
-#include <filearchive.h>
 #include <data.h>
 #include <exception.h>
+#include <filearchive.h>
+#include <serializer.h>
 
 namespace {
 
@@ -20,7 +21,6 @@ void getRandKey(Key& key) {
 }
 
 void createTestData(const char* outFileName, size_t recordCount) {
-
     FileOutArchive archive(outFileName);
     for (size_t i = 0; i < recordCount; ++i) {
         std::vector<char> data(rand() % 100);
@@ -30,7 +30,7 @@ void createTestData(const char* outFileName, size_t recordCount) {
 
         DataEntry entry(dataHeader, data);
 
-        entry.serialize(archive);
+        serialize(entry, archive);
     }
 }
 

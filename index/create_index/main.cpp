@@ -13,6 +13,7 @@
 #include <filearchive.h>
 #include <index.h>
 #include <merger.h>
+#include <serializer.h>
 #include <sorter.h>
 
 namespace {
@@ -36,9 +37,11 @@ void createChunks(const char* dataFileName, const char* chunkDir, std::list<std:
 
     while (!inArchive.eof()) {
         DataHeader dataHeader;
-        dataHeader.deserialize(inArchive);
+        deserialize(dataHeader, inArchive);
 
-        assert(dataHeader.canary == DataHeader::CANARY);
+        if (!isValid(dataHeader)) {
+            throw Exception() << "Read data is not valid";
+        }
 
         chunker.add(IndexEntry(dataHeader.key, inArchive.pos()));
 
@@ -80,7 +83,7 @@ void mergeChunks(const std::list<std::string>& chunkFiles, const char* outputFil
     IndexMerger merger(indexArchives);
     FileOutArchive outArchive(outputFileName);
     merger.merge([&outArchive](const IndexEntry& entry) -> void {
-        entry.serialize(outArchive);
+        serialize(entry, outArchive);
     });
 
     std::cout << "Index created\n";

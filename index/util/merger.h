@@ -18,7 +18,7 @@ class Merger {
 
         bool readNextItem() {
             bool eof = inArchive->eof();
-            item.deserialize(*inArchive);
+            deserialize(item, *inArchive);
             return !eof;
         }
     };

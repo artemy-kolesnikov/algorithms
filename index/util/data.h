@@ -75,6 +75,10 @@ public:
         in.read(canary);
         in.read(dataSize);
     }
+
+    bool isValid() const {
+        return canary == DataHeader::CANARY;
+    }
 };
 
 class DataEntry {
@@ -113,4 +117,24 @@ public:
 
     DataHeader header;
     std::vector<char> data;
+};
+
+template <typename T>
+struct IsClassSerializable {
+    static const bool value = false;
+};
+
+template <>
+struct IsClassSerializable<Key> {
+    static const bool value = true;
+};
+
+template <>
+struct IsClassSerializable<DataHeader> {
+    static const bool value = true;
+};
+
+template <>
+struct IsClassSerializable<DataEntry> {
+    static const bool value = true;
 };

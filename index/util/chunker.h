@@ -25,7 +25,7 @@ public:
     void add(const EntryType& entry) {
         ++chunkDataCounter;
 
-        entry.serialize(*fileArchive.get());
+        serialize(entry, *fileArchive.get());
 
         if (chunkDataCounter == countInChunk) {
             ++chunkCounter;

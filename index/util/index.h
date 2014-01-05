@@ -42,3 +42,8 @@ struct IndexEntry {
     uint64_t filePos;
     uint64_t canary;
 };
+
+template <>
+struct IsClassSerializable<IndexEntry> {
+    static const bool value = true;
+};
