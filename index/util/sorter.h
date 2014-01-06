@@ -3,6 +3,7 @@
 #include <chunker.h>
 #include <merger.h>
 #include <serializer.h>
+#include <threadpool.h>
 
 #include <algorithm>
 #include <functional>
@@ -20,8 +21,6 @@ enum SortEventType {
 };
 
 namespace _Impl {
-
-const size_t ITEMS_IN_CHUNK = 1 << 20;
 
 struct DummyEventCallback {
     void operator()(SortEventType, int) {}
@@ -82,17 +81,65 @@ void createChunks(const char* dataFileName, const char* chunkDir, std::list<std:
     eventCallback(DoneCreatingChunks, chunkFiles.size());
 }
 
+
+template <typename EntryType, typename ChunkerFunction = _Impl::DefaultChunkerFunction, typename EventCallback = _Impl::DummyEventCallback>
+void createAndSortChunks(const char* dataFileName, const char* chunkDir, std::list<std::string>& chunkFiles,
+        size_t itemsInChunk, size_t threadCount, ChunkerFunction chunkerFunction = _Impl::DefaultChunkerFunction(),
+        EventCallback eventCallback = _Impl::DummyEventCallback()) {
+    eventCallback(BeginCreatingChunks, 0);
+
+    ThreadPool threadPool(threadCount);
+
+    Chunker<EntryType> chunker(chunkDir, itemsInChunk,
+            [&](const char* chunkFileName) -> void {
+                threadPool.schedule([=]() {
+                    _Impl::sortFileInMemory<CopyableFileInArchive, CopyableFileOutArchive, EntryType>(chunkFileName);
+                });
+            }
+    );
+
+    FileInArchive inArchive(dataFileName);
+
+    while (!inArchive.eof()) {
+        EntryType data;
+        deserialize(data, inArchive);
+
+        if (!isValid(data)) {
+            throw Exception() << "Read data is not valid";
+        }
+
+        chunkerFunction(data, chunker, inArchive);
+    }
+
+    chunkFiles = chunker.getChunkFileNames();
+
+    chunker.flush();
+
+    std::string chunkFileName = chunkFiles.back();
+    threadPool.schedule([&chunkFileName]() {
+        _Impl::sortFileInMemory<CopyableFileInArchive, CopyableFileOutArchive, EntryType>(chunkFileName);
+    });
+
+    threadPool.waitTasksAndExit();
+
+    eventCallback(DoneCreatingChunks, chunkFiles.size());
+}
+
 template <typename EntryType, typename CompareFunc = std::less<EntryType>, typename EventCallback = _Impl::DummyEventCallback>
-void sortChunks(const std::list<std::string>& chunkFiles, CompareFunc cmp = std::less<EntryType>(), EventCallback eventCallback = _Impl::DummyEventCallback()) {
+void sortChunks(const std::list<std::string>& chunkFiles, size_t threadCount, CompareFunc cmp = std::less<EntryType>(),
+        EventCallback eventCallback = _Impl::DummyEventCallback()) {
     eventCallback(BeginSortingChunks, 0);
 
-    size_t count = 0;
+    ThreadPool threadPool(threadCount);
 
     std::list<std::string>::const_iterator fileNameIt = chunkFiles.begin();
     for (; fileNameIt != chunkFiles.end(); ++fileNameIt) {
-        _Impl::sortFileInMemory<CopyableFileInArchive, CopyableFileOutArchive, EntryType>(*fileNameIt, cmp);
-        eventCallback(ChunkSorted, count++);
+        threadPool.schedule([=]() {
+            _Impl::sortFileInMemory<CopyableFileInArchive, CopyableFileOutArchive, EntryType>(*fileNameIt, cmp);
+        });
     }
+
+    threadPool.waitTasksAndExit();
 }
 
 template <typename EntryType, typename EventCallback = _Impl::DummyEventCallback>
@@ -117,10 +164,9 @@ void mergeChunks(const std::list<std::string>& chunkFiles, const char* outputFil
 
 template <typename EntryType, typename CompareFunc, typename EventCallback>
 void externalSort(const char* fileName, const char* chunkDir, const char* outputFileName,
-        CompareFunc cmp, size_t itemsInChunk, EventCallback eventCallback) {
+        CompareFunc cmp, size_t itemsInChunk, size_t threadCount, EventCallback eventCallback) {
     std::list<std::string> chunkFiles;
 
-    createChunks<EntryType>(fileName, chunkDir, chunkFiles, itemsInChunk, _Impl::DefaultChunkerFunction(), eventCallback);
-    sortChunks<EntryType>(chunkFiles, cmp, eventCallback);
+    createAndSortChunks<EntryType>(fileName, chunkDir, chunkFiles, itemsInChunk, threadCount, _Impl::DefaultChunkerFunction(), eventCallback);
     mergeChunks<EntryType>(chunkFiles, outputFileName, eventCallback);
 }

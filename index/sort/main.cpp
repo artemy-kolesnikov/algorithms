@@ -6,7 +6,7 @@
 namespace {
 
 void printUsage() {
-    std::cout << "Usage: sort_file data_file_name tmp_data_dir out_file_name\n";
+    std::cout << "Usage: sort_file data_file_name tmp_data_dir items_in_chunk thread_count out_file_name\n";
 }
 
 struct EventCallback {
@@ -40,17 +40,20 @@ struct EventCallback {
 }
 
 int main(int argc, char* argv[]) {
-    if (argc != 4) {
+    if (argc != 6) {
         printUsage();
         return 1;
     }
 
     const char* dataFileName = argv[1];
     const char* chunkDir = argv[2];
-    const char* outputFileName = argv[3];
+    size_t itemsInChunk = atoi(argv[3]);
+    size_t threadCount = atoi(argv[4]);
+    const char* outputFileName = argv[5];
 
     try {
-        externalSort<DataEntry>(dataFileName, chunkDir, outputFileName, std::less<DataEntry>(), 1 << 20, EventCallback());
+        externalSort<DataEntry>(dataFileName, chunkDir, outputFileName,
+                std::less<DataEntry>(), itemsInChunk, threadCount, EventCallback());
     } catch (std::exception& ex) {
         std::cerr << ex.what() << "\n";
         return 1;

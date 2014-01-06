@@ -30,6 +30,10 @@ public:
         return out.tellp();
     }
 
+    void flush() {
+        out.flush();
+    }
+
 private:
     std::ofstream out;
 };
@@ -51,6 +55,10 @@ public:
 
     uint64_t pos() const {
         return impl->pos();
+    }
+
+    void flush() {
+        impl->flush();
     }
 
 private:

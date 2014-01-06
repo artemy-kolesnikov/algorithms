@@ -23,7 +23,7 @@ class Merger {
         }
     };
 
-    typedef std::priority_queue<ItemHolder> PriorityQueueType;
+    typedef std::priority_queue<ItemHolder> PriorityQueue;
 
 public:
     explicit Merger(const std::list<InArchive>& archives) :
@@ -31,7 +31,7 @@ public:
 
     template <typename ProcessFunction>
     void merge(ProcessFunction process) {
-        PriorityQueueType priorityQueue;
+        PriorityQueue priorityQueue;
 
         typename std::list<InArchive>::iterator archIt = inArchives.begin();
         for (; archIt != inArchives.end(); ++archIt) {
