@@ -12,11 +12,13 @@
 template <typename EntryType>
 class Chunker : boost::noncopyable {
 public:
-    Chunker(const std::string& chnkDir, size_t countInChnk) :
+    Chunker(const std::string& chnkDir, size_t countInChnk,
+        std::function<void(const char*)> chnkFilled = std::function<void(const char*)>()) :
             chunkDir(chnkDir),
             countInChunk(countInChnk),
             chunkDataCounter(0),
-            chunkCounter(0) {
+            chunkCounter(0),
+            chunkFilled(chnkFilled) {
         std::string chunkFileName = getChunkFileName();
         chunkFileNames.push_back(chunkFileName);
         fileArchive.reset(new FileOutArchive(chunkFileName));
@@ -30,15 +32,25 @@ public:
         if (chunkDataCounter == countInChunk) {
             ++chunkCounter;
 
+            std::string prevChunkFileName = chunkFileNames.back();
+
             std::string chunkFileName = getChunkFileName();
             chunkFileNames.push_back(chunkFileName);
             fileArchive.reset(new FileOutArchive(chunkFileName));
             chunkDataCounter = 0;
+
+            if (chunkFilled) {
+                chunkFilled(prevChunkFileName.c_str());
+            }
         }
     }
 
     const std::list<std::string> getChunkFileNames() const {
         return chunkFileNames;
+    }
+
+    void flush() {
+        fileArchive->flush();
     }
 
 private:
@@ -55,4 +67,5 @@ private:
     size_t chunkCounter;
     std::list<std::string> chunkFileNames;
     boost::shared_ptr<FileOutArchive> fileArchive;
+    std::function<void(const char*)> chunkFilled;
 };
