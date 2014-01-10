@@ -2,6 +2,7 @@
 
 #include <boost/utility.hpp>
 
+#include <atomic>
 #include <condition_variable>
 #include <deque>
 #include <list>
@@ -36,11 +37,17 @@ public:
         }
 
         workerCondition.notify_one();
+
+        ++taskToDoCount;
     }
 
     void wait();
     void waitTasksAndExit();
     void stop();
+
+    size_t tasksToDo() const {
+        return taskToDoCount;
+    }
 
 private:
     typedef std::deque< std::function<void()> > TaskQueue;
@@ -52,6 +59,7 @@ private:
     TaskQueue taskQueue;
     Workers workers;
     bool isStop;
+    std::atomic_int taskToDoCount;
 };
 
 void Worker::operator()() {
@@ -73,11 +81,14 @@ void Worker::operator()() {
         }
 
         task();
+
+        --threadPool->taskToDoCount;
     }
 }
 
 ThreadPool::ThreadPool(size_t threadCount) :
-        isStop(false) {
+        isStop(false),
+        taskToDoCount(0) {
     for (size_t index = 0; index < threadCount; ++index) {
         workers.push_back(std::thread(Worker(this)));
     }
