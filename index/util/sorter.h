@@ -33,8 +33,15 @@ struct DefaultChunkerFunction {
     }
 };
 
-template <typename InArchive, typename OutArchive, typename EntryType, typename CompareFunc = std::less<EntryType> >
-void sortFileInMemory(const std::string& fileName, CompareFunc cmp = std::less<EntryType>()) {
+struct DefaultSortFunction {
+    template <typename RandomAccessIterator>
+    void operator()(RandomAccessIterator begin, RandomAccessIterator end) {
+        std::sort(begin, end);
+    }
+};
+
+template <typename InArchive, typename OutArchive, typename EntryType, typename SortFunction>
+void sortFileInMemory(const std::string& fileName, SortFunction sort) {
     InArchive inArchive(fileName);
 
     std::vector<EntryType> dataVector;
@@ -46,7 +53,8 @@ void sortFileInMemory(const std::string& fileName, CompareFunc cmp = std::less<E
         dataVector.push_back(entry);
     }
 
-    std::sort(dataVector.begin(), dataVector.end(), cmp);
+    //std::sort(dataVector.begin(), dataVector.end(), cmp);
+    sort(dataVector.begin(), dataVector.end());
 
     OutArchive outArchive(fileName);
     std::for_each(dataVector.begin(), dataVector.end(), [&outArchive](const EntryType& entry) {
@@ -82,10 +90,11 @@ void createChunks(const char* dataFileName, const char* chunkDir, std::list<std:
 }
 
 
-template <typename EntryType, typename ChunkerFunction = _Impl::DefaultChunkerFunction, typename EventCallback = _Impl::DummyEventCallback>
+template <typename EntryType, typename ChunkerFunction = _Impl::DefaultChunkerFunction,
+        typename SortFunction = _Impl::DefaultSortFunction, typename EventCallback = _Impl::DummyEventCallback>
 void createAndSortChunks(const char* dataFileName, const char* chunkDir, std::list<std::string>& chunkFiles,
         size_t itemsInChunk, size_t threadCount, ChunkerFunction chunkerFunction = _Impl::DefaultChunkerFunction(),
-        EventCallback eventCallback = _Impl::DummyEventCallback()) {
+        SortFunction sort = SortFunction(), EventCallback eventCallback = _Impl::DummyEventCallback()) {
     eventCallback(BeginCreatingChunks, 0);
 
     ThreadPool threadPool(threadCount);
@@ -93,7 +102,7 @@ void createAndSortChunks(const char* dataFileName, const char* chunkDir, std::li
     Chunker<EntryType> chunker(chunkDir, itemsInChunk,
             [&](const char* chunkFileName) -> void {
                 threadPool.schedule([=]() {
-                    _Impl::sortFileInMemory<CopyableFileInArchive, CopyableFileOutArchive, EntryType>(chunkFileName);
+                    _Impl::sortFileInMemory<CopyableFileInArchive, CopyableFileOutArchive, EntryType>(chunkFileName, sort);
                 });
             }
     );
@@ -116,8 +125,8 @@ void createAndSortChunks(const char* dataFileName, const char* chunkDir, std::li
     chunker.flush();
 
     std::string chunkFileName = chunkFiles.back();
-    threadPool.schedule([&chunkFileName]() {
-        _Impl::sortFileInMemory<CopyableFileInArchive, CopyableFileOutArchive, EntryType>(chunkFileName);
+    threadPool.schedule([&chunkFileName, &sort]() {
+        _Impl::sortFileInMemory<CopyableFileInArchive, CopyableFileOutArchive, EntryType>(chunkFileName, sort);
     });
 
     threadPool.waitTasksAndExit();
@@ -125,9 +134,10 @@ void createAndSortChunks(const char* dataFileName, const char* chunkDir, std::li
     eventCallback(DoneCreatingChunks, chunkFiles.size());
 }
 
-template <typename EntryType, typename CompareFunc = std::less<EntryType>, typename EventCallback = _Impl::DummyEventCallback>
-void sortChunks(const std::list<std::string>& chunkFiles, size_t threadCount, CompareFunc cmp = std::less<EntryType>(),
-        EventCallback eventCallback = _Impl::DummyEventCallback()) {
+template <typename EntryType, typename SortFunction = _Impl::DefaultSortFunction,
+        typename EventCallback = _Impl::DummyEventCallback>
+void sortChunks(const std::list<std::string>& chunkFiles, size_t threadCount,
+        SortFunction sort = _Impl::DefaultSortFunction(), EventCallback eventCallback = _Impl::DummyEventCallback()) {
     eventCallback(BeginSortingChunks, 0);
 
     ThreadPool threadPool(threadCount);
@@ -135,7 +145,7 @@ void sortChunks(const std::list<std::string>& chunkFiles, size_t threadCount, Co
     std::list<std::string>::const_iterator fileNameIt = chunkFiles.begin();
     for (; fileNameIt != chunkFiles.end(); ++fileNameIt) {
         threadPool.schedule([=]() {
-            _Impl::sortFileInMemory<CopyableFileInArchive, CopyableFileOutArchive, EntryType>(*fileNameIt, cmp);
+            _Impl::sortFileInMemory<CopyableFileInArchive, CopyableFileOutArchive, EntryType>(*fileNameIt, sort);
         });
     }
 
@@ -162,11 +172,12 @@ void mergeChunks(const std::list<std::string>& chunkFiles, const char* outputFil
     eventCallback(DoneMergingChunks, 0);
 }
 
-template <typename EntryType, typename CompareFunc, typename EventCallback>
+template <typename EntryType, typename SortFunction = _Impl::DefaultSortFunction, typename EventCallback = _Impl::DummyEventCallback>
 void externalSort(const char* fileName, const char* chunkDir, const char* outputFileName,
-        CompareFunc cmp, size_t itemsInChunk, size_t threadCount, EventCallback eventCallback) {
+        size_t itemsInChunk, size_t threadCount, SortFunction sort = _Impl::DefaultSortFunction(),
+        EventCallback eventCallback = _Impl::DummyEventCallback()) {
     std::list<std::string> chunkFiles;
 
-    createAndSortChunks<EntryType>(fileName, chunkDir, chunkFiles, itemsInChunk, threadCount, _Impl::DefaultChunkerFunction(), eventCallback);
+    createAndSortChunks<EntryType>(fileName, chunkDir, chunkFiles, itemsInChunk, threadCount, _Impl::DefaultChunkerFunction(), sort, eventCallback);
     mergeChunks<EntryType>(chunkFiles, outputFileName, eventCallback);
 }

@@ -2,6 +2,7 @@
 
 #include <data.h>
 #include <sorter.h>
+#include <radixsort.h>
 
 namespace {
 
@@ -37,6 +38,13 @@ struct EventCallback {
     }
 };
 
+struct Sort {
+    template <typename RandomAccessIterator>
+    void operator()(RandomAccessIterator begin, RandomAccessIterator end) {
+        std::sort(begin, end);
+    }
+};
+
 }
 
 int main(int argc, char* argv[]) {
@@ -53,7 +61,7 @@ int main(int argc, char* argv[]) {
 
     try {
         externalSort<DataEntry>(dataFileName, chunkDir, outputFileName,
-                std::less<DataEntry>(), itemsInChunk, threadCount, EventCallback());
+                itemsInChunk, threadCount, Sort(), EventCallback());
     } catch (std::exception& ex) {
         std::cerr << ex.what() << "\n";
         return 1;
