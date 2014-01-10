@@ -3,6 +3,7 @@
 #include <fstream>
 #include <list>
 #include <queue>
+#include <minextractor.h>
 
 template <typename ItemType, typename InArchive>
 class Merger {
@@ -13,7 +14,7 @@ class Merger {
         ItemHolder(InArchive *archive) : inArchive(archive) {}
 
         bool operator < (const ItemHolder& other) const {
-            return !(item < other.item);
+            return item < other.item;
         }
 
         bool readNextItem() {
@@ -30,7 +31,7 @@ public:
             inArchives(archives) {}
 
     template <typename ProcessFunction>
-    void merge(ProcessFunction process) {
+    void merge2(ProcessFunction process) {
         PriorityQueue priorityQueue;
 
         typename std::list<InArchive>::iterator archIt = inArchives.begin();
@@ -55,6 +56,31 @@ public:
                 } else {
                     priorityQueue.push(holder);
                 }
+            }
+        }
+    }
+
+    template <typename ProcessFunction>
+    void merge(ProcessFunction process) {
+        std::list<ItemHolder> items;
+
+        typename std::list<InArchive>::iterator archIt = inArchives.begin();
+        for (; archIt != inArchives.end(); ++archIt) {
+            ItemHolder holder(&*archIt);
+            if (holder.readNextItem()) {
+                items.push_back(holder);
+            }
+        }
+
+        MinExtractor<ItemHolder> minExtractor(items.begin(), items.end());
+
+        while (!minExtractor.empty()) {
+            ItemHolder holder = minExtractor.min();
+            process(holder.item);
+            if (holder.readNextItem()) {
+                minExtractor.changeMin(holder);
+            } else {
+                minExtractor.maskMin();
             }
         }
     }
