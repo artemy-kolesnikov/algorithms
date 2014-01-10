@@ -25,10 +25,6 @@ public:
     }
 
     void add(const EntryType& entry) {
-        ++chunkDataCounter;
-
-        serialize(entry, *fileArchive.get());
-
         if (chunkDataCounter == countInChunk) {
             ++chunkCounter;
 
@@ -43,6 +39,9 @@ public:
                 chunkFilled(prevChunkFileName.c_str());
             }
         }
+
+        serialize(entry, *fileArchive.get());
+        ++chunkDataCounter;
     }
 
     const std::list<std::string> getChunkFileNames() const {
