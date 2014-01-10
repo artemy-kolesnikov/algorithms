@@ -78,11 +78,11 @@ struct IsClassSerializable<IndexEntry> {
 
 template <typename DataEntry, typename IndexEntry, typename CreateKeyFunc>
 void createIndex(const char* dataFileName, const char* chunkDir, const char* outputFileName,
-        size_t itemsInChunk, CreateKeyFunc createKeyFunc) {
+        size_t itemsInChunk, size_t threadCount, CreateKeyFunc createKeyFunc) {
     std::list<std::string> chunkFiles;
 
     _Impl::createIndexChunks<DataEntry, IndexEntry>(dataFileName, chunkDir, chunkFiles, itemsInChunk, createKeyFunc);
-    sortChunks<IndexEntry>(chunkFiles);
+    sortChunks<IndexEntry>(chunkFiles, threadCount);
     mergeChunks<IndexEntry>(chunkFiles, outputFileName);
 }
 
