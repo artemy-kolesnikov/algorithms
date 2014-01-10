@@ -6,13 +6,8 @@
 #include <vector>
 
 class MemoryOutArchive {
-    enum {
-        INITIAL_BUFF_SIZE = 4096
-    };
-
 public:
     MemoryOutArchive() :
-            buffer(INITIAL_BUFF_SIZE),
             currentPos(0) {}
 
     template <typename T>
@@ -25,7 +20,7 @@ public:
         size_t size = count * sizeof(T);
 
         if (currentPos + size >= buffer.size()) {
-            buffer.resize(buffer.size() * 2);
+            buffer.resize(currentPos + size);
         }
 
         memcpy(&buffer[currentPos], ptr, size);
