@@ -2,6 +2,7 @@
 
 #include <chunker.h>
 #include <merger.h>
+#include <mtmerger.h>
 #include <serializer.h>
 #include <threadpool.h>
 
@@ -21,8 +22,6 @@ enum SortEventType {
 };
 
 namespace _Impl {
-
-const size_t ITEMS_IN_CHUNK = 1 << 20;
 
 struct DummyEventCallback {
     void operator()(SortEventType, int) {}
@@ -130,9 +129,8 @@ template <typename EntryType, typename CompareFunc = std::less<EntryType>, typen
 void sortChunks(const std::list<std::string>& chunkFiles, CompareFunc cmp = std::less<EntryType>(), EventCallback eventCallback = _Impl::DummyEventCallback()) {
     eventCallback(BeginSortingChunks, 0);
 
+    //XXX
     ThreadPool threadPool(4);
-
-    size_t count = 0;
 
     std::list<std::string>::const_iterator fileNameIt = chunkFiles.begin();
     for (; fileNameIt != chunkFiles.end(); ++fileNameIt) {
@@ -164,11 +162,32 @@ void mergeChunks(const std::list<std::string>& chunkFiles, const char* outputFil
     eventCallback(DoneMergingChunks, 0);
 }
 
+template <typename EntryType, typename EventCallback = _Impl::DummyEventCallback>
+void mergeChunksMt(const std::list<std::string>& chunkFiles, const char* outputFileName, EventCallback eventCallback = _Impl::DummyEventCallback()) {
+    eventCallback(BeginMergingChunks, 0);
+
+    std::list<CopyableFileInArchive> archives;
+
+    std::list<std::string>::const_iterator fileNameIt = chunkFiles.begin();
+    for (; fileNameIt != chunkFiles.end(); ++fileNameIt) {
+        archives.push_back(CopyableFileInArchive(*fileNameIt));
+    }
+
+    //XXX
+    MtMerger<EntryType, CopyableFileInArchive> merger(archives, 4, 2, "tmp");
+    FileOutArchive outArchive(outputFileName);
+    merger.merge([&outArchive](const EntryType& entry) -> void {
+        serialize(entry, outArchive);
+    });
+
+    eventCallback(DoneMergingChunks, 0);
+}
+
 template <typename EntryType, typename CompareFunc, typename EventCallback>
 void externalSort(const char* fileName, const char* chunkDir, const char* outputFileName,
         CompareFunc cmp, size_t itemsInChunk, EventCallback eventCallback) {
     std::list<std::string> chunkFiles;
 
     createAndSortChunks<EntryType>(fileName, chunkDir, chunkFiles, itemsInChunk, _Impl::DefaultChunkerFunction(), eventCallback);
-    mergeChunks<EntryType>(chunkFiles, outputFileName, eventCallback);
+    mergeChunksMt<EntryType>(chunkFiles, outputFileName, eventCallback);
 }

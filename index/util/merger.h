@@ -23,7 +23,7 @@ class Merger {
         }
     };
 
-    typedef std::priority_queue<ItemHolder> PriorityQueueType;
+    typedef std::priority_queue<ItemHolder> PriorityQueue;
 
 public:
     explicit Merger(const std::list<InArchive>& archives) :
@@ -31,7 +31,7 @@ public:
 
     template <typename ProcessFunction>
     void merge(ProcessFunction process) {
-        PriorityQueueType priorityQueue;
+        PriorityQueue priorityQueue;
 
         typename std::list<InArchive>::iterator archIt = inArchives.begin();
         for (; archIt != inArchives.end(); ++archIt) {
@@ -61,4 +61,65 @@ public:
 
 private:
     std::list<InArchive> inArchives;
+};
+
+template <typename ItemType, typename InArchive>
+class TwoWayMerger {
+public:
+    TwoWayMerger(const InArchive& firstArc, const InArchive& secondArc) :
+            firstArchive(firstArc),
+            secondArchive(secondArc) {}
+
+    template <typename ProcessFunction>
+    void merge(ProcessFunction process) {
+        ItemType first, second;
+
+        deserialize(first, firstArchive);
+        deserialize(second, secondArchive);
+
+        bool hasInFirst = false;
+        bool hasInSecond = false;
+
+        while (true) {
+            if (first < second) {
+                process(first);
+                if (firstArchive.eof()) {
+                    hasInFirst = false;
+                    break;
+                }
+                deserialize(first, firstArchive);
+                hasInFirst = true;
+            } else {
+                process(second);
+                if (secondArchive.eof()) {
+                    hasInSecond = false;
+                    break;
+                }
+                deserialize(second, secondArchive);
+                hasInSecond = true;
+            }
+        }
+
+        if (hasInFirst) {
+            process(first);
+            passTail(firstArchive, process);
+        } else if (hasInSecond) {
+            process(second);
+            passTail(secondArchive, process);
+        }
+    }
+
+private:
+    template <typename ProcessFunction>
+    void passTail(InArchive& archive, ProcessFunction process) {
+        while (!archive.eof()) {
+            ItemType item;
+            deserialize(item, archive);
+            process(item);
+        }
+    }
+
+private:
+    InArchive firstArchive;
+    InArchive secondArchive;
 };
