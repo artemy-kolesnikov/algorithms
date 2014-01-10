@@ -12,7 +12,7 @@
 #include <radixsort.h>
 
 size_t getRandValue() {
-    int result = 0;
+    size_t result = 0;
 
     result |= (rand() % 255) << 0;
     result |= (rand() % 255) << 8;

@@ -25,7 +25,7 @@ void radix_sort(RandomAcessIterator begin, RandomAcessIterator end) {
         auxRef = &tmpVector[0];
     }
 
-    const size_t COUNT_SIZE = 0x100;
+    const size_t COUNT_SIZE = 0x101;
 
     uint32_t counts[COUNT_SIZE][RADIX] = {0};
 
