@@ -68,8 +68,8 @@ private:
 class FileInArchive : boost::noncopyable {
 public:
     explicit FileInArchive(const std::string& fName) :
-            fileName(fName),
-            mMapper(fName) {
+            mMapper(fName),
+            fileName(fName) {
         mMapper.map();
         const char* beginPtr = mMapper.getBeginPtr();
         const char* endPtr = mMapper.getEndPtr();
