@@ -4,10 +4,10 @@
 #include <memarchive.h>
 #include <mmapper.h>
 
-#include <boost/shared_ptr.hpp>
 #include <boost/utility.hpp>
 
 #include <fstream>
+#include <memory>
 #include <string>
 #include <type_traits>
 
@@ -62,7 +62,7 @@ public:
     }
 
 private:
-    boost::shared_ptr<FileOutArchive> impl;
+    std::shared_ptr<FileOutArchive> impl;
 };
 
 class FileInArchive : boost::noncopyable {
@@ -133,5 +133,5 @@ public:
     }
 
 private:
-    boost::shared_ptr<FileInArchive> impl;
+    std::shared_ptr<FileInArchive> impl;
 };

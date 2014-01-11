@@ -2,10 +2,10 @@
 
 #include <filearchive.h>
 
-#include <boost/shared_ptr.hpp>
 #include <boost/utility.hpp>
 
 #include <list>
+#include <memory>
 #include <sstream>
 #include <string>
 
@@ -67,6 +67,6 @@ private:
     size_t chunkDataCounter;
     size_t chunkCounter;
     std::list<std::string> chunkFileNames;
-    boost::shared_ptr<FileOutArchive> fileArchive;
+    std::shared_ptr<FileOutArchive> fileArchive;
     std::function<void(const char*)> chunkFilled;
 };
