@@ -2,7 +2,6 @@
 
 #include <data.h>
 #include <sorter.h>
-#include <radixsort.h>
 
 namespace {
 

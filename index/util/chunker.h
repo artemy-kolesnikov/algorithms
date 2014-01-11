@@ -9,9 +9,11 @@
 #include <sstream>
 #include <string>
 
-template <typename EntryType>
+template <typename T>
 class Chunker : boost::noncopyable {
 public:
+    typedef T EntryType;
+
     Chunker(const std::string& chnkDir, size_t countInChnk,
         std::function<void(const char*)> chnkFilled = std::function<void(const char*)>()) :
             chunkDir(chnkDir),

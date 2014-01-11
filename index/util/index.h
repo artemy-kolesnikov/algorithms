@@ -9,31 +9,6 @@
 #include <exception.h>
 #include <sorter.h>
 
-namespace _Impl {
-
-template <typename DataEntry, typename IndexEntry, typename CreateKeyFunc>
-void createIndexChunks(const char* dataFileName, const char* chunkDir, std::list<std::string>& chunkFiles,
-        size_t itemsInChunk, CreateKeyFunc createKeyFunc) {
-    Chunker<IndexEntry> chunker(chunkDir, itemsInChunk);
-
-    FileInArchive inArchive(dataFileName);
-
-    while (!inArchive.eof()) {
-        DataEntry data;
-        deserialize(data, inArchive);
-
-        if (!isValid(data)) {
-            throw Exception() << "Read data is not valid";
-        }
-
-        chunker.add(createKeyFunc(data, inArchive.pos()));
-    }
-
-    chunkFiles = chunker.getChunkFileNames();
-}
-
-}
-
 struct IndexEntry {
     IndexEntry() :
             filePos(0),
@@ -81,8 +56,11 @@ void createIndex(const char* dataFileName, const char* chunkDir, const char* out
         size_t itemsInChunk, size_t threadCount, CreateKeyFunc createKeyFunc) {
     std::list<std::string> chunkFiles;
 
-    _Impl::createIndexChunks<DataEntry, IndexEntry>(dataFileName, chunkDir, chunkFiles, itemsInChunk, createKeyFunc);
-    sortChunks<IndexEntry>(chunkFiles, threadCount);
+    createAndSortChunks<DataEntry, Chunker<IndexEntry>>(dataFileName, chunkDir, chunkFiles, itemsInChunk, threadCount,
+            [createKeyFunc](const DataEntry& entry, Chunker<IndexEntry>& chunker, FileInArchive& inArchive) {
+                chunker.add(createKeyFunc(entry, inArchive.pos()));
+            }
+    );
     mergeChunks<IndexEntry>(chunkFiles, outputFileName);
 }
 

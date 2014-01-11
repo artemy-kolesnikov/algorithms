@@ -22,7 +22,7 @@ enum SortEventType {
 
 namespace _Impl {
 
-struct DummyEventCallback {
+struct DefaultEventCallback {
     void operator()(SortEventType, int) {}
 };
 
@@ -64,9 +64,9 @@ void sortFileInMemory(const std::string& fileName, SortFunction sort) {
 
 }
 
-template <typename EntryType, typename ChunkerFunction = _Impl::DefaultChunkerFunction, typename EventCallback = _Impl::DummyEventCallback>
+template <typename EntryType, typename ChunkerFunction = _Impl::DefaultChunkerFunction, typename EventCallback = _Impl::DefaultEventCallback>
 void createChunks(const char* dataFileName, const char* chunkDir, std::list<std::string>& chunkFiles,
-        size_t itemsInChunk, ChunkerFunction chunkerFunction = _Impl::DefaultChunkerFunction(), EventCallback eventCallback = _Impl::DummyEventCallback()) {
+        size_t itemsInChunk, ChunkerFunction chunkerFunction = _Impl::DefaultChunkerFunction(), EventCallback eventCallback = _Impl::DefaultEventCallback()) {
     eventCallback(BeginCreatingChunks, 0);
 
     Chunker<EntryType> chunker(chunkDir, itemsInChunk);
@@ -90,19 +90,19 @@ void createChunks(const char* dataFileName, const char* chunkDir, std::list<std:
 }
 
 
-template <typename EntryType, typename ChunkerFunction = _Impl::DefaultChunkerFunction,
-        typename SortFunction = _Impl::DefaultSortFunction, typename EventCallback = _Impl::DummyEventCallback>
+template <typename EntryType, typename Chunker = Chunker<EntryType>, typename ChunkerFunction = _Impl::DefaultChunkerFunction,
+        typename SortFunction = _Impl::DefaultSortFunction, typename EventCallback = _Impl::DefaultEventCallback>
 void createAndSortChunks(const char* dataFileName, const char* chunkDir, std::list<std::string>& chunkFiles,
         size_t itemsInChunk, size_t threadCount, ChunkerFunction chunkerFunction = _Impl::DefaultChunkerFunction(),
-        SortFunction sort = SortFunction(), EventCallback eventCallback = _Impl::DummyEventCallback()) {
+        SortFunction sort = SortFunction(), EventCallback eventCallback = _Impl::DefaultEventCallback()) {
     eventCallback(BeginCreatingChunks, 0);
 
     ThreadPool threadPool(threadCount);
 
-    Chunker<EntryType> chunker(chunkDir, itemsInChunk,
+    Chunker chunker(chunkDir, itemsInChunk,
             [&](const char* chunkFileName) -> void {
                 threadPool.schedule([=]() {
-                    _Impl::sortFileInMemory<CopyableFileInArchive, CopyableFileOutArchive, EntryType>(chunkFileName, sort);
+                    _Impl::sortFileInMemory<CopyableFileInArchive, CopyableFileOutArchive, typename Chunker::EntryType>(chunkFileName, sort);
                 });
             }
     );
@@ -126,7 +126,7 @@ void createAndSortChunks(const char* dataFileName, const char* chunkDir, std::li
 
     std::string chunkFileName = chunkFiles.back();
     threadPool.schedule([&chunkFileName, &sort]() {
-        _Impl::sortFileInMemory<CopyableFileInArchive, CopyableFileOutArchive, EntryType>(chunkFileName, sort);
+        _Impl::sortFileInMemory<CopyableFileInArchive, CopyableFileOutArchive, typename Chunker::EntryType>(chunkFileName, sort);
     });
 
     threadPool.waitTasksAndExit();
@@ -135,9 +135,9 @@ void createAndSortChunks(const char* dataFileName, const char* chunkDir, std::li
 }
 
 template <typename EntryType, typename SortFunction = _Impl::DefaultSortFunction,
-        typename EventCallback = _Impl::DummyEventCallback>
+        typename EventCallback = _Impl::DefaultEventCallback>
 void sortChunks(const std::list<std::string>& chunkFiles, size_t threadCount,
-        SortFunction sort = _Impl::DefaultSortFunction(), EventCallback eventCallback = _Impl::DummyEventCallback()) {
+        SortFunction sort = _Impl::DefaultSortFunction(), EventCallback eventCallback = _Impl::DefaultEventCallback()) {
     eventCallback(BeginSortingChunks, 0);
 
     ThreadPool threadPool(threadCount);
@@ -152,8 +152,8 @@ void sortChunks(const std::list<std::string>& chunkFiles, size_t threadCount,
     threadPool.waitTasksAndExit();
 }
 
-template <typename EntryType, typename EventCallback = _Impl::DummyEventCallback>
-void mergeChunks(const std::list<std::string>& chunkFiles, const char* outputFileName, EventCallback eventCallback = _Impl::DummyEventCallback()) {
+template <typename EntryType, typename EventCallback = _Impl::DefaultEventCallback>
+void mergeChunks(const std::list<std::string>& chunkFiles, const char* outputFileName, EventCallback eventCallback = _Impl::DefaultEventCallback()) {
     eventCallback(BeginMergingChunks, 0);
 
     std::list<CopyableFileInArchive> archives;
@@ -172,10 +172,10 @@ void mergeChunks(const std::list<std::string>& chunkFiles, const char* outputFil
     eventCallback(DoneMergingChunks, 0);
 }
 
-template <typename EntryType, typename SortFunction = _Impl::DefaultSortFunction, typename EventCallback = _Impl::DummyEventCallback>
+template <typename EntryType, typename SortFunction = _Impl::DefaultSortFunction, typename EventCallback = _Impl::DefaultEventCallback>
 void externalSort(const char* fileName, const char* chunkDir, const char* outputFileName,
         size_t itemsInChunk, size_t threadCount, SortFunction sort = _Impl::DefaultSortFunction(),
-        EventCallback eventCallback = _Impl::DummyEventCallback()) {
+        EventCallback eventCallback = _Impl::DefaultEventCallback()) {
     std::list<std::string> chunkFiles;
 
     createAndSortChunks<EntryType>(fileName, chunkDir, chunkFiles, itemsInChunk, threadCount, _Impl::DefaultChunkerFunction(), sort, eventCallback);
