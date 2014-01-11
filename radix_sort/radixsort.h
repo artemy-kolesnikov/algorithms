@@ -2,9 +2,11 @@
 
 #include <algorithm>
 #include <vector>
+#include <type_traits>
 
 template <typename RandomAcessIterator>
-void radix_sort(RandomAcessIterator begin, RandomAcessIterator end) {
+void radix_sort(RandomAcessIterator begin, RandomAcessIterator end,
+        typename std::enable_if<std::is_integral<typename RandomAcessIterator::value_type>::value>::type* = 0) {
     typedef typename RandomAcessIterator::value_type ValueType;
 
     const size_t RADIX = sizeof(ValueType);

@@ -14,10 +14,10 @@
 size_t getRandValue() {
     size_t result = 0;
 
-    result |= (rand() % 255) << 0;
-    result |= (rand() % 255) << 8;
-    result |= (rand() % 255) << 16;
-    result |= (rand() % 255) << 24;
+    result |= (rand() % 256) << 0;
+    result |= (rand() % 256) << 8;
+    result |= (rand() % 256) << 16;
+    result |= (rand() % 256) << 24;
 
     return result;
 }
