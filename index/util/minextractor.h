@@ -99,7 +99,6 @@ private:
                 tree[parentIndex] = tree[minDataIndex(tree[index], tree[siblingIndex])];
             }
 
-
             index = parentIndex;
         }
     }

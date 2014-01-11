@@ -3,22 +3,27 @@
 #include <fstream>
 #include <list>
 #include <queue>
+#include <vector>
 
 template <typename ItemType, typename InArchive>
 class Merger {
     struct ItemHolder {
-        ItemType item;
+        ItemType* item;
         InArchive *inArchive;
 
-        ItemHolder(InArchive *archive) : inArchive(archive) {}
+        ItemHolder(ItemType* itemPtr, InArchive *archive) :
+                item(itemPtr),
+                inArchive(archive) {}
 
         bool operator < (const ItemHolder& other) const {
-            return !(item < other.item);
+            // Make min heap
+            return !(*item < *other.item);
         }
 
         bool readNextItem() {
+            //Save archive eof state because read operation can change it
             bool eof = inArchive->eof();
-            deserialize(item, *inArchive);
+            deserialize(*item, *inArchive);
             return !eof;
         }
     };
@@ -33,9 +38,14 @@ public:
     void merge(ProcessFunction process) {
         PriorityQueue priorityQueue;
 
+        std::vector<ItemType> itemMemory;
+        itemMemory.reserve(inArchives.size());
+
         typename std::list<InArchive>::iterator archIt = inArchives.begin();
         for (; archIt != inArchives.end(); ++archIt) {
-            ItemHolder holder(&*archIt);
+            itemMemory.push_back(ItemType());
+
+            ItemHolder holder(&itemMemory.back(), &*archIt);
             if (holder.readNextItem()) {
                 priorityQueue.push(holder);
             }
@@ -45,12 +55,20 @@ public:
             ItemHolder holder = priorityQueue.top();
             priorityQueue.pop();
 
-            process(holder.item);
+            process(*holder.item);
 
-            if (holder.readNextItem()) {
+            const bool queueEmpty = priorityQueue.empty();
+            const ItemHolder& topHolder = priorityQueue.top();
+            bool holderRead = holder.readNextItem();
+            while (!queueEmpty && holderRead && *holder.item < *topHolder.item) {
+                process(*holder.item);
+                holderRead = holder.readNextItem();
+            }
+
+            if (holderRead) {
                 if (priorityQueue.empty()) {
                     do {
-                        process(holder.item);
+                        process(*holder.item);
                     } while (holder.readNextItem());
                 } else {
                     priorityQueue.push(holder);
