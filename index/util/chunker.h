@@ -1,8 +1,7 @@
 #pragma once
 
 #include <filearchive.h>
-
-#include <boost/utility.hpp>
+#include <noncopyable.h>
 
 #include <list>
 #include <memory>
@@ -10,7 +9,7 @@
 #include <string>
 
 template <typename T>
-class Chunker : boost::noncopyable {
+class Chunker : Noncopyable {
 public:
     typedef T EntryType;
 

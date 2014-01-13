@@ -51,7 +51,7 @@ public:
 
     void maskMin() {
         size_t minIndex = tree.back();
-        maskBits[minIndex] = true;
+        maskBits[minIndex] = 1;
         propogate(minIndex);
         ++maskedCount;
     }
@@ -90,7 +90,7 @@ private:
             size_t parentIndex = parent(index);
 
             if (maskBits[index] && maskBits[siblingIndex]) {
-                maskBits[parentIndex] = true;
+                maskBits[parentIndex] = 1;
             } else if (maskBits[index]) {
                 tree[parentIndex] = tree[siblingIndex];
             } else if (maskBits[siblingIndex]) {
@@ -142,7 +142,7 @@ private:
 private:
     std::vector<T> array;
     std::vector<size_t> tree;
-    std::vector<bool> maskBits;
+    std::vector<char> maskBits;
     size_t maskedCount;
     std::vector<size_t> parents;
 };

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <boost/utility.hpp>
+#include <noncopyable.h>
 
 #include <atomic>
 #include <condition_variable>
@@ -23,7 +23,7 @@ private:
     ThreadPool* threadPool;
 };
 
-class ThreadPool : boost::noncopyable {
+class ThreadPool : Noncopyable {
     friend class Worker;
 public:
     explicit ThreadPool(size_t threadCount);

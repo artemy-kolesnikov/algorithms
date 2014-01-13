@@ -3,15 +3,14 @@
 #include <exception.h>
 #include <memarchive.h>
 #include <mmapper.h>
-
-#include <boost/utility.hpp>
+#include <noncopyable.h>
 
 #include <fstream>
 #include <memory>
 #include <string>
 #include <type_traits>
 
-class FileOutArchive : boost::noncopyable {
+class FileOutArchive : Noncopyable {
 public:
     explicit FileOutArchive(const std::string& fileName) :
             out(fileName.c_str()) {}
@@ -65,7 +64,7 @@ private:
     std::shared_ptr<FileOutArchive> impl;
 };
 
-class FileInArchive : boost::noncopyable {
+class FileInArchive : Noncopyable {
 public:
     explicit FileInArchive(const std::string& fName) :
             mMapper(fName),

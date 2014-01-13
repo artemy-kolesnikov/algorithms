@@ -1,5 +1,7 @@
 #pragma once
 
+#include <noncopyable.h>
+
 #include <cerrno>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -7,9 +9,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <boost/utility.hpp>
-
-class ReadOnlyMemMapper : boost::noncopyable {
+class ReadOnlyMemMapper : Noncopyable {
 public:
     explicit ReadOnlyMemMapper(const std::string& fName) :
         fileName(fName),
