@@ -4,6 +4,9 @@
 #include <vector>
 #include <type_traits>
 
+#include <xmmintrin.h>
+#include <emmintrin.h>
+
 template <typename RandomAcessIterator>
 void radix_sort(RandomAcessIterator begin, RandomAcessIterator end,
         typename std::enable_if<std::is_integral<typename RandomAcessIterator::value_type>::value>::type* = 0) {
@@ -38,9 +41,12 @@ void radix_sort(RandomAcessIterator begin, RandomAcessIterator end,
         }
     }
 
-    uint32_t* countsPtr = reinterpret_cast<uint32_t*>(counts);
-    for (size_t i = 0; i < (COUNT_SIZE - 1)* RADIX; ++i, ++countsPtr) {
-        *(countsPtr + RADIX) += *countsPtr;
+    for (size_t i = 0; i < COUNT_SIZE - 1; ++i) {
+        __m128i v0 = _mm_load_si128((__m128i*)&counts[i][0]);
+        __m128i v1 = _mm_load_si128((__m128i*)&counts[i + 1][0]);
+
+        __m128i vsum = _mm_add_epi32(v0, v1);
+        _mm_store_si128((__m128i*)&counts[i + 1][0], vsum);
     }
 
     for (uint8_t r = 0; r < RADIX; ++r) {
