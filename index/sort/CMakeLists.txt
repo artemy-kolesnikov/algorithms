@@ -2,12 +2,12 @@ cmake_minimum_required (VERSION 2.6)
 
 set (sort sort)
 
-set (CMAKE_BUILD_TYPE "Release")
-set (CMAKE_CXX_FLAGS "-std=c++11 -O3 -Wall -pthread")
+#set (CMAKE_BUILD_TYPE "Release")
+set (CMAKE_CXX_FLAGS "-std=c++11 -O2 -Wall -pthread")
 
 set (sources
     main.cpp)
 
-include_directories(../util)
+include_directories(../util ../../radix_sort)
 
 add_executable(${sort} ${sources})

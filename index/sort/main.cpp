@@ -2,6 +2,7 @@
 
 #include <benchmarkdata.h>
 #include <sorter.h>
+#include <radixsort.h>
 
 namespace {
 
@@ -40,7 +41,10 @@ struct EventCallback {
 struct Sort {
     template <typename RandomAccessIterator>
     void operator()(RandomAccessIterator begin, RandomAccessIterator end) {
-        std::sort(begin, end);
+        //std::sort(begin, end);
+        /*radix_sort(begin, end, [](const typename RandomAccessIterator::value_type& value, uint32_t radix) -> uint8_t {
+            return value.key[10 - 1 - radix];
+        }, 10);*/
     }
 };
 

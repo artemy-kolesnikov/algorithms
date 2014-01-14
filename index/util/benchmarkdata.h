@@ -7,6 +7,19 @@
 
 class BenchmarkData {
 public:
+    BenchmarkData() {}
+
+    BenchmarkData(BenchmarkData&& other) {
+        key = std::move(other.key);
+        payload = std::move(other.payload);
+    }
+
+    BenchmarkData& operator=(BenchmarkData&& other) {
+        key = std::move(other.key);
+        payload = std::move(other.payload);
+        return *this;
+    }
+
     template <typename OutArchive>
     void serialize(OutArchive& out) const {
         out.write(&key.front(), key.size());
@@ -27,7 +40,6 @@ public:
         return true;
     }
 
-private:
     std::array<char, 10> key;
     std::array<char, 90> payload;
 };

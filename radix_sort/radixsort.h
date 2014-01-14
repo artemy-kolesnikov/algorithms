@@ -4,37 +4,28 @@
 #include <vector>
 #include <type_traits>
 
-template <typename RandomAcessIterator>
+template <typename RandomAcessIterator, typename GetRadix>
 void radix_sort(RandomAcessIterator begin, RandomAcessIterator end,
-        typename std::enable_if<std::is_integral<typename RandomAcessIterator::value_type>::value>::type* = 0) {
+        GetRadix getRadix, size_t radixCount = 4) {
     typedef typename RandomAcessIterator::value_type ValueType;
 
-    const size_t RADIX = sizeof(ValueType);
+    const size_t RADIX = radixCount;
     const size_t SIZE = end - begin;
-
-    const size_t MAX_STACK_ARRAY_SIZE = 0xFF;
-    ValueType stackTmpArray[MAX_STACK_ARRAY_SIZE];
-
-    std::vector<ValueType> tmpVector;
 
     ValueType* srcRef = &*begin;
     ValueType* auxRef = 0;
 
-    if (SIZE <= MAX_STACK_ARRAY_SIZE) {
-        auxRef = stackTmpArray;
-    } else {
-        tmpVector.resize(SIZE);
-        auxRef = &tmpVector[0];
-    }
+    std::vector<ValueType> tmpVector(SIZE);
+    auxRef = &tmpVector[0];
 
     const size_t COUNT_SIZE = 0x101;
 
-    uint32_t counts[COUNT_SIZE][RADIX] = {0};
+    uint32_t counts[COUNT_SIZE][RADIX];
+    memset(counts, 0, COUNT_SIZE * RADIX * sizeof(uint32_t));
 
-    const uint8_t* ptr = reinterpret_cast<const uint8_t*>(srcRef);
     for (size_t i = 0; i < SIZE; ++i) {
-        for (uint8_t r = 0; r < RADIX; ++r, ++ptr) {
-            ++counts[*ptr + 1][r];
+        for (uint8_t r = 0; r < RADIX; ++r) {
+            ++counts[getRadix(srcRef[i], r) + 1][r];
         }
     }
 
@@ -44,15 +35,10 @@ void radix_sort(RandomAcessIterator begin, RandomAcessIterator end,
     }
 
     for (uint8_t r = 0; r < RADIX; ++r) {
-        const uint8_t* ptr = reinterpret_cast<const uint8_t*>(srcRef) + r;
-        for (size_t i = 0; i < SIZE; ++i, ptr += RADIX) {
-            auxRef[counts[*ptr][r]++] = srcRef[i];
+        for (size_t i = 0; i < SIZE; ++i) {
+            auxRef[counts[getRadix(srcRef[i], r)][r]++] = std::move(srcRef[i]);
         }
 
         std::swap(srcRef, auxRef);
-    }
-
-    if (RADIX == 1) {
-        std::copy(srcRef, srcRef + SIZE, begin);
     }
 }
