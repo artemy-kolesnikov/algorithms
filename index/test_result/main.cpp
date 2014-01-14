@@ -4,6 +4,7 @@
 #include <filearchive.h>
 #include <index.h>
 #include <serializer.h>
+#include <benchmarkdata.h>
 
 namespace {
 
@@ -27,7 +28,7 @@ void test(const char* fileName) {
             throw Exception() << "Failed data in" << count << "position";
         }
 
-        if (entry < prev) {
+        if (count && entry < prev) {
             throw Exception() << "Failed order in" << count << "position";
         }
 
@@ -52,7 +53,7 @@ int main(int argc, char* argv[]) {
 
     try {
         if (entryType == "sorted") {
-            test<DataEntry>(fileName);
+            test<BenchmarkData>(fileName);
         } else if (entryType == "index") {
             test<IndexEntry>(fileName);
         } else {

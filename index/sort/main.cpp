@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include <data.h>
+#include <benchmarkdata.h>
 #include <sorter.h>
 
 namespace {
@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) {
     const char* outputFileName = argv[5];
 
     try {
-        externalSort<DataEntry>(dataFileName, chunkDir, outputFileName,
+        externalSort<BenchmarkData>(dataFileName, chunkDir, outputFileName,
                 itemsInChunk, threadCount, Sort(), EventCallback());
     } catch (std::exception& ex) {
         std::cerr << ex.what() << "\n";
