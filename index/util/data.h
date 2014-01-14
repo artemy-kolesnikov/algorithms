@@ -9,7 +9,7 @@
 class Key : std::vector<unsigned char> {
 public:
     enum {
-        SIZE = 64,
+        SIZE = 10,
     };
 
     Key() : std::vector<unsigned char>(SIZE, 0) {}  
@@ -30,6 +30,10 @@ public:
 
     bool operator > (const Key& other) const {
         return (memcmp(&front(), &other.front(), sizeof(unsigned char) * SIZE) > 0);
+    }
+
+    bool operator <= (const Key& other) const {
+        return (*this < other) || (*this == other);
     }
 
     template <typename OutArchive>
@@ -108,6 +112,10 @@ public:
 
     bool operator < (const DataEntry& other) const {
         return header.key < other.header.key;
+    }
+
+    bool operator <= (const DataEntry& other) const {
+        return header.key <= other.header.key;
     }
 
     bool isValid() const {

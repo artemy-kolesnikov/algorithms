@@ -4,6 +4,7 @@
 #include <merger.h>
 #include <serializer.h>
 #include <threadpool.h>
+#include <queuechunker.h>
 
 #include <algorithm>
 #include <functional>
@@ -89,6 +90,30 @@ void createChunks(const char* dataFileName, const char* chunkDir, std::list<std:
     eventCallback(DoneCreatingChunks, chunkFiles.size());
 }
 
+template <typename EntryType, typename EventCallback = _Impl::DefaultEventCallback>
+void createSortedChunks(const std::string& fileName, const std::string& chunkDir, std::list<std::string>& chunkFiles,
+        size_t itemsInChunk, EventCallback eventCallback = _Impl::DefaultEventCallback()) {
+    eventCallback(BeginCreatingChunks, 0);
+
+    QueueChunker<EntryType> chunker(chunkDir, itemsInChunk);
+
+    FileInArchive inArchive(fileName);
+
+    while (!inArchive.eof()) {
+        EntryType data;
+        deserialize(data, inArchive);
+
+        if (!isValid(data)) {
+            throw Exception() << "Read data is not valid";
+        }
+
+        chunker.add(data);
+    }
+
+    chunkFiles = chunker.getChunkFileNames();
+
+    eventCallback(DoneCreatingChunks, chunkFiles.size());
+}
 
 template <typename EntryType, typename Chunker = Chunker<EntryType>, typename ChunkerFunction = _Impl::DefaultChunkerFunction,
         typename SortFunction = _Impl::DefaultSortFunction, typename EventCallback = _Impl::DefaultEventCallback>
@@ -179,5 +204,6 @@ void externalSort(const char* fileName, const char* chunkDir, const char* output
     std::list<std::string> chunkFiles;
 
     createAndSortChunks<EntryType>(fileName, chunkDir, chunkFiles, itemsInChunk, threadCount, _Impl::DefaultChunkerFunction(), sort, eventCallback);
+    //createSortedChunks<EntryType>(fileName, chunkDir, chunkFiles, itemsInChunk, eventCallback);
     mergeChunks<EntryType>(chunkFiles, outputFileName, eventCallback);
 }
