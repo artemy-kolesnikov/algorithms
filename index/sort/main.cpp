@@ -4,6 +4,8 @@
 #include <sorter.h>
 #include <radixsort.h>
 
+#include <sys/time.h>
+
 namespace {
 
 void printUsage() {
@@ -41,16 +43,68 @@ struct EventCallback {
 struct Sort {
     template <typename RandomAccessIterator>
     void operator()(RandomAccessIterator begin, RandomAccessIterator end) {
-        //std::sort(begin, end);
+        struct timeval start, stop;
+        gettimeofday(&start, NULL);
+
+        std::sort(begin, end);
         /*radix_sort(begin, end, [](const typename RandomAccessIterator::value_type& value, uint32_t radix) -> uint8_t {
             return value.key[10 - 1 - radix];
         }, 10);*/
+
+        gettimeofday(&stop, NULL);
+
+        int seconds  = stop.tv_sec  - start.tv_sec;
+        int useconds = stop.tv_usec - start.tv_usec;
+        std::cout << ((seconds) * pow(10, 6) + useconds) << "\n";
     }
 };
+
+void test(const std::string& fileName) {
+    FileInArchive inArchive(fileName);
+
+    std::vector<BenchmarkData> vector1, vector2;
+
+    while (!inArchive.eof()) {
+        BenchmarkData entry;
+        deserialize(entry, inArchive);
+
+        vector1.push_back(entry);
+        vector2.push_back(entry);
+    }
+
+    struct timeval start, stop;
+    gettimeofday(&start, NULL);
+
+    radix_sort(vector1.begin(), vector1.end(), [](const BenchmarkData& value, uint32_t radix) -> uint8_t {
+        return value.key[10 - 1 - radix];
+    }, 10);
+
+    gettimeofday(&stop, NULL);
+
+    int seconds  = stop.tv_sec  - start.tv_sec;
+    int useconds = stop.tv_usec - start.tv_usec;
+
+    std::cout << ((seconds) * pow(10, 6) + useconds) << "\n";
+
+    gettimeofday(&start, NULL);
+
+    std::sort(vector2.begin(), vector2.end());
+
+    gettimeofday(&stop, NULL);
+
+    seconds  = stop.tv_sec  - start.tv_sec;
+    useconds = stop.tv_usec - start.tv_usec;
+
+    std::cout << ((seconds) * pow(10, 6) + useconds) << "\n";
+}
 
 }
 
 int main(int argc, char* argv[]) {
+    test(argv[1]);
+
+    return 0;
+
     if (argc != 6) {
         printUsage();
         return 1;

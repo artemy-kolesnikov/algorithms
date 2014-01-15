@@ -179,5 +179,5 @@ void externalSort(const char* fileName, const char* chunkDir, const char* output
     std::list<std::string> chunkFiles;
 
     createAndSortChunks<EntryType>(fileName, chunkDir, chunkFiles, itemsInChunk, threadCount, _Impl::DefaultChunkerFunction(), sort, eventCallback);
-    mergeChunks<EntryType>(chunkFiles, outputFileName, eventCallback);
+    //mergeChunks<EntryType>(chunkFiles, outputFileName, eventCallback);
 }

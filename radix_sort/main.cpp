@@ -10,8 +10,11 @@
 #include <iterator>
 
 #include <radixsort.h>
+#include <benchmarkdata.h>
 
-const size_t RAND_STRING_SIZE = 10;
+#include "radixsort2.h"
+
+const size_t RAND_STRING_SIZE = 8;
 
 template <typename T>
 T getRandValue();
@@ -50,6 +53,16 @@ std::vector<uint8_t> getRandValue<std::vector<uint8_t>>() {
     return result;
 }
 
+template <>
+BenchmarkData getRandValue<BenchmarkData>() {
+    BenchmarkData result;
+    for (size_t i = 0; i < result.key.size(); ++i) {
+        result.key[i] = rand() % 255;
+    }
+
+    return result;
+}
+
 std::pair<float, float> evaluate(size_t size) {
     float radixTime = .0;
     float qsortTime = .0;
@@ -62,9 +75,10 @@ std::pair<float, float> evaluate(size_t size) {
     //typedef std::string ValueType;
     typedef std::vector<uint8_t> ValueType;
     //typedef uint32_t ValueType;
+    //typedef BenchmarkData ValueType;
 
     const size_t SIZE = size;
-    for (size_t i = 0; i < 10000; ++i) {
+    for (size_t i = 0; i < 1; ++i) {
         std::vector<ValueType> vec1(SIZE);
         std::vector<ValueType> vec2(SIZE);
         std::vector<ValueType> vec(SIZE);
@@ -77,12 +91,20 @@ std::pair<float, float> evaluate(size_t size) {
         std::copy(vec.begin(), vec.end(), vec2.begin());
 
         gettimeofday(&start, NULL);
-        radix_sort(vec1.begin(), vec1.end(), [](const ValueType& value, uint32_t radix) -> uint8_t {
-            return value[RAND_STRING_SIZE - 1 - radix];
-        }, RAND_STRING_SIZE);
+        radix_sort(vec1.begin(), vec1.end(), [](const ValueType& value, uint32_t radix) -> uint16_t {
+            size_t index = RAND_STRING_SIZE - (radix << 1);
+            return (value[index - 2] << 8) | value[index - 1];
+            //return value[RAND_STRING_SIZE - radix - 1];
+        }, RAND_STRING_SIZE / 2);
         /*radix_sort(vec1.begin(), vec1.end(), [](const ValueType& value, uint32_t radix) -> uint32_t {
             return (value >> (8 * radix)) & 0xFF;
         });*/
+
+        /*radix_sort(vec1.begin(), vec1.end(), [](const ValueType& value, uint32_t radix) -> uint16_t {
+            //return (value.key[10 - 1 - radix - 1] << 8) + value.key[10 - 1 - radix];
+            return value.key[10 - 1 - radix];
+        }, 10);*/
+
         gettimeofday(&end, NULL);
 
         int seconds  = end.tv_sec  - start.tv_sec;
@@ -107,7 +129,7 @@ std::pair<float, float> evaluate(size_t size) {
 
         if (vec1 != vec2) {
             std::cout << "Incorrect sorting result\n";
-            exit(1);
+            //exit(1);
         }
     }
 
@@ -115,7 +137,21 @@ std::pair<float, float> evaluate(size_t size) {
 }
 
 int main(int argc, char* argv[]) {
-    for (size_t i = 200; i <= 1000; ++i) {
+    std::vector<char> v1 = {0x00, 0x10};
+    std::vector<char> v2 = {0x09, 0x05};
+
+    uint32_t num1 = (v1[0] << 8) | v1[1];
+    uint32_t num2 = (v2[0] << 8) | v2[1];
+
+    std::cout << (num1 < num2) << std::hex << " " << num1 << " " << num2 << "\n";
+    std::cout << (v1 < v2) << "\n";
+
+    std::pair<float, float> res = evaluate(1000000);
+    std::cout << res.first << " " << res.second << "\n";
+
+    return 0;
+
+    for (size_t i = 10; i <= 100; ++i) {
         std::pair<float, float> result = evaluate(i);
         std::cout << i << " " << result.first << " " << result.second << "\n";
         if (result.first < result.second) {

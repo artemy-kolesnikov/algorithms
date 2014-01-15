@@ -3,6 +3,10 @@
 #include <algorithm>
 #include <vector>
 #include <type_traits>
+#include <memory>
+
+#include <xmmintrin.h>
+#include <emmintrin.h>
 
 template <typename RandomAcessIterator, typename GetRadix>
 void radix_sort(RandomAcessIterator begin, RandomAcessIterator end,
@@ -13,12 +17,15 @@ void radix_sort(RandomAcessIterator begin, RandomAcessIterator end,
     const size_t SIZE = end - begin;
 
     ValueType* srcRef = &*begin;
-    ValueType* auxRef = 0;
+    /*ValueType* auxRef = 0;
 
     std::vector<ValueType> tmpVector(SIZE);
-    auxRef = &tmpVector[0];
+    auxRef = &tmpVector[0];*/
 
-    const size_t COUNT_SIZE = 0x101;
+    std::unique_ptr<char[]> tmpMemory(new char[SIZE * sizeof(ValueType)]);
+    ValueType* auxRef = reinterpret_cast<ValueType*>(tmpMemory.get());
+
+    const size_t COUNT_SIZE = 0x10000;
 
     uint32_t counts[COUNT_SIZE][RADIX];
     memset(counts, 0, COUNT_SIZE * RADIX * sizeof(uint32_t));
@@ -34,11 +41,29 @@ void radix_sort(RandomAcessIterator begin, RandomAcessIterator end,
         *(countsPtr + RADIX) += *countsPtr;
     }
 
-    for (uint8_t r = 0; r < RADIX; ++r) {
+    /*for (size_t i = 0; i < COUNT_SIZE - 1; ++i) {
+        __m128i v0 = _mm_load_si128((__m128i*)&counts[i][0]);
+        __m128i v1 = _mm_load_si128((__m128i*)&counts[i + 1][0]);
+
+        __m128i vsum = _mm_add_epi32(v0, v1);
+        _mm_store_si128((__m128i*)&counts[i + 1][0], vsum);
+    }*/
+
+    for (int8_t r = 0; r < RADIX; ++r) {
         for (size_t i = 0; i < SIZE; ++i) {
-            auxRef[counts[getRadix(srcRef[i], r)][r]++] = std::move(srcRef[i]);
+            size_t index = counts[getRadix(srcRef[i], r)][r]++;
+            if (r == 0) {
+                //tmpVector.emplace(tmpVector.begin() + index, srcRef[i]);
+                new(&auxRef[index]) ValueType(std::move(srcRef[i]));
+            } else {
+                auxRef[index] = std::move(srcRef[i]);
+            }
         }
 
         std::swap(srcRef, auxRef);
+    }
+
+    if (RADIX % 2 == 1) {
+        std::move(srcRef, srcRef + SIZE, begin);
     }
 }
