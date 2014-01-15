@@ -54,13 +54,18 @@ void sortFileInMemory(const std::string& fileName, SortFunction sort) {
         dataVector.push_back(entry);
     }
 
-    //std::sort(dataVector.begin(), dataVector.end(), cmp);
     sort(dataVector.begin(), dataVector.end());
 
     OutArchive outArchive(fileName);
     std::for_each(dataVector.begin(), dataVector.end(), [&outArchive](const EntryType& entry) {
         serialize(entry, outArchive);
     });
+}
+
+std::string getChunkFileName(const std::string& chunkDir, size_t chunkCounter) {
+    std::stringstream sstr;
+    sstr << chunkDir << "/chunk_" << chunkCounter << ".dat";
+    return sstr.str();
 }
 
 }
@@ -159,6 +164,96 @@ void createAndSortChunks(const char* dataFileName, const char* chunkDir, std::li
     eventCallback(DoneCreatingChunks, chunkFiles.size());
 }
 
+template <typename T, typename Sort>
+struct SortFunctor {
+    SortFunctor(const std::vector<T>& d, Sort s, const std::string& fName) :
+            data(std::move(d)),
+            sort(s),
+            fileName(fName){}
+
+    void operator()() {
+        ThreadPool threadPool(4);
+
+        std::nth_element(data.begin(), data.begin() + data.size() / 2, data.end());
+
+        threadPool.schedule([&]() {
+            sort(data.begin(), data.begin() + data.size() / 2);
+        });
+
+        threadPool.schedule([&]() {
+            sort(data.begin() + 1 + data.size() / 2, data.end());
+        });
+
+        threadPool.waitTasksAndExit();
+
+        FileOutArchive outArchive(fileName);
+        for (const T& value : data) {
+            serialize(value, outArchive);
+        }
+
+        outArchive.flush();
+
+        // Get data to disk cache
+        FileInArchive inArchive(fileName);
+        while (!inArchive.eof()) {
+            T data;
+            deserialize(data, inArchive);
+        }
+    }
+
+    std::vector<T> data;
+    Sort sort;
+    std::string fileName;
+};
+
+template <typename EntryType, typename SortFunction = _Impl::DefaultSortFunction, typename EventCallback = _Impl::DefaultEventCallback>
+void createAndSortChunksInPlace(const char* dataFileName, const char* chunkDir, std::list<std::string>& chunkFiles,
+        size_t itemsInChunk, size_t threadCount, SortFunction sort = SortFunction(), EventCallback eventCallback = _Impl::DefaultEventCallback()) {
+    eventCallback(BeginCreatingChunks, 0);
+
+    ThreadPool threadPool(threadCount);
+
+    FileInArchive inArchive(dataFileName);
+
+    std::vector<EntryType> entries;
+
+    size_t chunkCounter = 0;
+
+    size_t count = 0;
+    while (!inArchive.eof()) {
+        EntryType data;
+        deserialize(data, inArchive);
+
+        if (!isValid(data)) {
+            throw Exception() << "Read data is not valid";
+        }
+
+        entries.push_back(data);
+
+        if (count++ > itemsInChunk) {
+            std::string chunkFileName = _Impl::getChunkFileName(chunkDir, chunkCounter++);
+            chunkFiles.push_back(chunkFileName);
+            SortFunctor<EntryType, SortFunction> sortFunction(entries, sort, chunkFileName);
+
+            entries = std::vector<EntryType>();
+
+            threadPool.schedule(sortFunction);
+
+            count = 0;
+        }
+    }
+
+    std::string chunkFileName = _Impl::getChunkFileName(chunkDir, chunkCounter++);
+    chunkFiles.push_back(chunkFileName);
+
+    SortFunctor<EntryType, SortFunction> sortFunction(entries, sort, chunkFileName);
+    threadPool.schedule(sortFunction);
+
+    threadPool.waitTasksAndExit();
+
+    eventCallback(DoneCreatingChunks, chunkFiles.size());
+}
+
 template <typename EntryType, typename SortFunction = _Impl::DefaultSortFunction,
         typename EventCallback = _Impl::DefaultEventCallback>
 void sortChunks(const std::list<std::string>& chunkFiles, size_t threadCount,
@@ -204,6 +299,6 @@ void externalSort(const char* fileName, const char* chunkDir, const char* output
     std::list<std::string> chunkFiles;
 
     createAndSortChunks<EntryType>(fileName, chunkDir, chunkFiles, itemsInChunk, threadCount, _Impl::DefaultChunkerFunction(), sort, eventCallback);
-    //createSortedChunks<EntryType>(fileName, chunkDir, chunkFiles, itemsInChunk, eventCallback);
-    mergeChunks<EntryType>(chunkFiles, outputFileName, eventCallback);
+    //createAndSortChunksInPlace<EntryType>(fileName, chunkDir, chunkFiles, itemsInChunk, threadCount, sort, eventCallback);
+    //mergeChunks<EntryType>(chunkFiles, outputFileName, eventCallback);
 }
