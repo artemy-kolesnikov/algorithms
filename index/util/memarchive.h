@@ -101,6 +101,14 @@ public:
         currentPtr += bytes;
     }
 
+    void setPos(size_t pos) {
+        if (bufferBegin + pos > bufferEnd) {
+            throw Exception() << "Can't set" << pos << "pos because it is out of bounds";
+        }
+
+        currentPtr = bufferBegin + pos;
+    }
+
 private:
     const char* bufferBegin;
     const char* bufferEnd;
