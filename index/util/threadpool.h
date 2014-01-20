@@ -30,10 +30,10 @@ public:
     ~ThreadPool();
 
     template <typename Function>
-    void schedule(Function function) {
+    void schedule(Function&& function) {
         {
             std::unique_lock<std::mutex> lock(queueMutex);
-            taskQueue.push_back(std::function<void()>(function));
+            taskQueue.push_back(std::function<void()>(std::move(function)));
         }
 
         workerCondition.notify_one();
@@ -76,7 +76,7 @@ void Worker::operator()() {
                 return;
             }
 
-            task = threadPool->taskQueue.front();
+            task = std::move(threadPool->taskQueue.front());
             threadPool->taskQueue.pop_front();
         }
 
