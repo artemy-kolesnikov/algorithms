@@ -166,38 +166,42 @@ void createAndSortChunks(const char* dataFileName, const char* chunkDir, std::li
 
 template <typename T, typename Sort>
 struct SortFunctor {
-    SortFunctor(const std::vector<T>& d, Sort s, const std::string& fName) :
+    SortFunctor(std::vector<T>&& d, Sort s, const std::string& fName) :
             data(std::move(d)),
             sort(s),
             fileName(fName){}
 
+    SortFunctor(const SortFunctor& other) {
+        data = other.data;
+        sort = other.sort;
+        fileName = other.fileName;
+    }
+
+    SortFunctor& operator = (const SortFunctor& other) {
+        SortFunctor tmp(other);
+        std::swap(other, *this);
+        return *this;
+    }
+
+    SortFunctor(SortFunctor&& other) {
+        data = std::move(other.data);
+        sort = std::move(other.sort);
+        fileName = std::move(other.fileName);
+    }
+
+    SortFunctor& operator = (SortFunctor&& other) {
+        data = std::move(other.data);
+        sort = std::move(other.sort);
+        fileName = std::move(other.fileName);
+        return *this;
+    }
+
     void operator()() {
-        ThreadPool threadPool(4);
-
-        std::nth_element(data.begin(), data.begin() + data.size() / 2, data.end());
-
-        threadPool.schedule([&]() {
-            sort(data.begin(), data.begin() + data.size() / 2);
-        });
-
-        threadPool.schedule([&]() {
-            sort(data.begin() + 1 + data.size() / 2, data.end());
-        });
-
-        threadPool.waitTasksAndExit();
+        std::sort(data.begin(), data.end());
 
         FileOutArchive outArchive(fileName);
         for (const T& value : data) {
             serialize(value, outArchive);
-        }
-
-        outArchive.flush();
-
-        // Get data to disk cache
-        FileInArchive inArchive(fileName);
-        while (!inArchive.eof()) {
-            T data;
-            deserialize(data, inArchive);
         }
     }
 
@@ -233,9 +237,9 @@ void createAndSortChunksInPlace(const char* dataFileName, const char* chunkDir, 
         if (count++ > itemsInChunk) {
             std::string chunkFileName = _Impl::getChunkFileName(chunkDir, chunkCounter++);
             chunkFiles.push_back(chunkFileName);
-            SortFunctor<EntryType, SortFunction> sortFunction(entries, sort, chunkFileName);
+            SortFunctor<EntryType, SortFunction> sortFunction(std::move(entries), sort, chunkFileName);
 
-            entries = std::vector<EntryType>();
+            std::vector<EntryType>().swap(entries);
 
             threadPool.schedule(sortFunction);
 
@@ -246,7 +250,7 @@ void createAndSortChunksInPlace(const char* dataFileName, const char* chunkDir, 
     std::string chunkFileName = _Impl::getChunkFileName(chunkDir, chunkCounter++);
     chunkFiles.push_back(chunkFileName);
 
-    SortFunctor<EntryType, SortFunction> sortFunction(entries, sort, chunkFileName);
+    SortFunctor<EntryType, SortFunction> sortFunction(std::move(entries), sort, chunkFileName);
     threadPool.schedule(sortFunction);
 
     threadPool.waitTasksAndExit();
@@ -298,7 +302,6 @@ void externalSort(const char* fileName, const char* chunkDir, const char* output
         EventCallback eventCallback = _Impl::DefaultEventCallback()) {
     std::list<std::string> chunkFiles;
 
-    createAndSortChunks<EntryType>(fileName, chunkDir, chunkFiles, itemsInChunk, threadCount, _Impl::DefaultChunkerFunction(), sort, eventCallback);
-    //createAndSortChunksInPlace<EntryType>(fileName, chunkDir, chunkFiles, itemsInChunk, threadCount, sort, eventCallback);
-    //mergeChunks<EntryType>(chunkFiles, outputFileName, eventCallback);
+    createAndSortChunksInPlace<EntryType>(fileName, chunkDir, chunkFiles, itemsInChunk, threadCount, sort, eventCallback);
+    mergeChunks<EntryType>(chunkFiles, outputFileName, eventCallback);
 }
