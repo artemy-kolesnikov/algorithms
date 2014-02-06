@@ -3,7 +3,7 @@ Index and external sort
 
 #Functionality
 
-Data structure must be serializable and compariable, i.e. has functions listed below:
+Data structure must be serializable and comparable, i.e. has functions listed below:
 
 ```cpp
 struct Data {
@@ -16,15 +16,20 @@ struct Data {
     void deserialize(InArchive& in) {
         in.read(..);
     }
+
+    bool operator < (const Data& other) const {
+        return ...;
+    }
 };
 ```
 
-And template specialization:
+Library internals call global serialize/deserialize functions to have common interface for POD and non POD types
+For non POD types client must make a template specialization like this:
 
 ```cpp
 template <>
 struct IsClassSerializable<Data> {
-        static const bool value = true;
+    static const bool value = true;
 };
 ```
 
@@ -55,10 +60,12 @@ createIndex<DataEntry, IndexEntry>(dataFileName, chunkDir, outputFileName,
 
 ###Utility usage example:
 
+```
 cmake .
 make
 create_test_data/create_test_data 10000000 data.dat
 create_index/create_index create_test_data/data.dat tmp 1000000 4 index.dat
+```
 
 ##External file sort
 
@@ -78,10 +85,12 @@ externalSort<DataEntry>(dataFileName, chunkDir, outputFileName, itemsInChunk, th
 
 ###Utility usage example:
 
+```sh
 cmake .
 make
 create_test_data/create_test_data 10000000 data.dat
 sort/sort create_test_data/data.dat tmp 1000000 4 sorted.dat
+```
 
 #Folders
 
