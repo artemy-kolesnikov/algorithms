@@ -6,7 +6,8 @@ set (CMAKE_BUILD_TYPE "Release")
 set (CMAKE_CXX_FLAGS "-std=c++11 -O3 -Wall -pthread")
 
 set (sources
-    main.cpp)
+    main.cpp
+    ../util/threadpool.cpp)
 
 include_directories(../util)
 
